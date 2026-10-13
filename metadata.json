@@ -1,0 +1,6 @@
+{
+  "name": "Elite Ride Dominica - Luxury Chauffeur & VIP Airport Transfers",
+  "description": "Dominica's official on-demand ride-hailing and transit platform. Features Elite Standard Sedan, Elite 4WD Mountain SUV, Elite Shared Coaster, and Airport VIP Transfers with live GPS tracking, NBD MoBanking, and mPay.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
