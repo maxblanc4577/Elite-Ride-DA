@@ -30,6 +30,7 @@ import {
 import { ActiveRide, Currency } from '../types/booking';
 import { formatFare } from '../utils/pricing';
 import { DOMINICA_LOCATIONS, VEHICLE_TIERS } from '../data/dominicaData';
+import { EliteRideLogo } from './EliteRideLogo';
 
 interface LiveTrackingSimulatorProps {
   ride: ActiveRide | null;
@@ -277,6 +278,7 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
       {/* Top Status Header */}
       <div className="bg-neutral-950 p-5 sm:p-6 border-b border-neutral-800 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
+          <EliteRideLogo variant="mark" size="sm" theme="dark" />
           <span className="relative flex h-3.5 w-3.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500" />
@@ -302,11 +304,12 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Consolidated Action Controls */}
+        <div className="inline-flex items-center gap-2 p-1 bg-neutral-900/90 border border-neutral-800 rounded-xl shadow-inner">
           {/* Emergency SOS Button */}
           <button
             onClick={() => setSosActivated(true)}
-            className="px-3.5 py-2 bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+            className="px-3 py-1.5 bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
           >
             <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
             <span>24/7 SOS 999</span>
@@ -315,7 +318,7 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
           {/* Share trip button */}
           <button
             onClick={handleCopyShare}
-            className="p-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-xs transition-colors border border-neutral-700"
+            className="p-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg text-xs transition-colors border border-neutral-700 cursor-pointer"
             title="Share Trip Tracking Link"
           >
             <Share2 className="w-4 h-4" />
@@ -590,11 +593,14 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
               <ellipse cx="380" cy="180" rx="140" ry="70" fill="#047857" opacity="0.3" />
               <ellipse cx="360" cy="240" rx="110" ry="60" fill="#059669" opacity="0.4" />
               <path
+                id="svg-route-path"
+                className="svg-route-path"
                 d="M 220,70 Q 300,120 360,200 Q 440,260 500,320"
                 fill="none"
                 stroke="#34d399"
-                strokeWidth="3"
-                strokeDasharray="4 4"
+                strokeWidth="3.5"
+                strokeDasharray="400"
+                strokeDashoffset={400 - (400 * progressPercent) / 100}
               />
             </svg>
 

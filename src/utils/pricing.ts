@@ -11,10 +11,22 @@ export function calculateRideFare(booking: RideBookingData): FareCalculation {
   const tier = VEHICLE_TIERS.find((t) => t.id === booking.vehicleTierId) || VEHICLE_TIERS[0];
   let miles = getRouteMiles(booking.pickupId, booking.dropoffId);
 
-  // If there's a stopover, add ~35% extra mileage & wait time
+  // If there's a stopover on the way, add extra distance
   if (booking.hasStopover && booking.stopoverId) {
     const extraMiles = getRouteMiles(booking.pickupId, booking.stopoverId) * 0.5;
     miles = parseFloat((miles + extraMiles).toFixed(1));
+  }
+
+  // If there are additional stop locations beyond the destination (up to 2 stops)
+  if (booking.additionalStops && booking.additionalStops.length > 0) {
+    let prevPoint = booking.dropoffId;
+    for (const stopId of booking.additionalStops) {
+      if (stopId) {
+        const legDistance = getRouteMiles(prevPoint, stopId);
+        miles = parseFloat((miles + legDistance).toFixed(1));
+        prevPoint = stopId;
+      }
+    }
   }
 
   const baseFeeXCD = tier.baseFeeXCD;
@@ -27,6 +39,11 @@ export function calculateRideFare(booking: RideBookingData): FareCalculation {
   // Approx minutes based on Dominica mountain terrain (~25-30 mph avg speed)
   const estimatedMinutes = Math.max(8, Math.round(miles * 2.1));
 
+  // Split fare calculation if enabled or split count provided
+  const splitCount = booking.splitPassengersCount && booking.splitPassengersCount > 1 ? booking.splitPassengersCount : 1;
+  const splitFareXCD = parseFloat((totalXCD / splitCount).toFixed(2));
+  const splitFareUSD = parseFloat((totalUSD / splitCount).toFixed(2));
+
   return {
     distanceMiles: miles,
     estimatedMinutes,
@@ -37,6 +54,8 @@ export function calculateRideFare(booking: RideBookingData): FareCalculation {
     totalXCD,
     totalUSD,
     tier,
+    splitFareXCD,
+    splitFareUSD,
   };
 }
 

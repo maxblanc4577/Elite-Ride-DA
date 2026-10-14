@@ -1,11 +1,13 @@
 import React from 'react';
-import { ArrowRight, ShieldCheck, MapPin, Radio, Smartphone, CreditCard, UserPlus, LayoutDashboard } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Radio, Smartphone } from 'lucide-react';
+import { EliteRideLogo } from './EliteRideLogo';
 
 interface HeroSectionProps {
   onStartBooking: () => void;
   onOpenDriverPortal: () => void;
   onOpenRiderSignUp?: () => void;
   onOpenAdminPortal?: () => void;
+  onOpenDriverSignUp?: () => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
@@ -13,6 +15,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onOpenDriverPortal,
   onOpenRiderSignUp,
   onOpenAdminPortal,
+  onOpenDriverSignUp,
 }) => {
   return (
     <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden bg-neutral-950">
@@ -29,6 +32,18 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       </div>
 
       <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+        {/* Official Brand Identity Presentation */}
+        <div className="flex justify-center mb-6">
+          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-neutral-950/80 border border-neutral-800 backdrop-blur-md shadow-2xl">
+            <EliteRideLogo
+              variant="horizontal"
+              size="sm"
+              theme="dark"
+              showTagline={false}
+            />
+          </div>
+        </div>
+
         {/* Unboxed Metadata Kicker */}
         <div className="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm font-medium tracking-wide text-emerald-400 mb-5">
           <span>Commonwealth of Dominica</span>
@@ -78,25 +93,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <span>Book a Ride Now</span>
             <ArrowRight className="w-4 h-4" />
           </button>
-
-
-
-          <button
-            onClick={onOpenDriverPortal}
-            className="px-5 py-3.5 bg-neutral-900/90 hover:bg-neutral-800 text-white font-semibold text-sm rounded-xl transition-colors border border-neutral-700 cursor-pointer"
-          >
-            Driver Portal
-          </button>
-
-          {onOpenAdminPortal && (
-            <button
-              onClick={onOpenAdminPortal}
-              className="px-5 py-3.5 bg-neutral-900/70 hover:bg-neutral-800 text-neutral-300 hover:text-white font-medium text-xs rounded-xl transition-colors border border-neutral-800 flex items-center gap-1.5 cursor-pointer"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Admin Console</span>
-            </button>
-          )}
         </div>
       </div>
     </section>

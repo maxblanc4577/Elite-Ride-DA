@@ -258,3 +258,303 @@ export function getRouteMiles(fromId: string, toId: string): number {
 
 export const VAT_RATE = 0.15; // 15% Dominica VAT
 export const EXCHANGE_RATE_USD_TO_XCD = 2.70;
+
+export interface EliteEstimationLocationMeta {
+  id: string;
+  name: string;
+  shortName: string;
+  district: string;
+  travelTime: string;
+  minutesRemaining: number;
+  distanceMiles: number;
+  highwayCorridor: string;
+  streetViewImage: string;
+  compass: string;
+  elevation: string;
+  speed: string;
+  roadType: string;
+  coordinates: { x: number; y: number };
+  pathD: string;
+}
+
+export const ELITE_ESTIMATION_LOCATIONS_META: EliteEstimationLocationMeta[] = [
+  {
+    id: 'DOM',
+    name: 'Douglas-Charles Airport (DOM)',
+    shortName: 'Douglas-Charles (DOM)',
+    district: 'St. Andrew',
+    travelTime: '55 mins',
+    minutesRemaining: 55,
+    distanceMiles: 34.0,
+    highwayCorridor: 'Nicholas Liverpool Highway · North East Pass',
+    streetViewImage: '/src/assets/images/dominica_street_view_rainforest_1791833359756.jpg',
+    compass: '038° NE',
+    elevation: '24m ASL',
+    speed: '65 km/h',
+    roadType: 'Airport Express Highway',
+    coordinates: { x: 490, y: 110 },
+    pathD: 'M 240,480 C 260,390 320,290 410,210 S 480,140 490,110',
+  },
+  {
+    id: 'PORTSMOUTH',
+    name: 'Portsmouth (Grand-Anse)',
+    shortName: 'Portsmouth',
+    district: 'St. John',
+    travelTime: '45 mins',
+    minutesRemaining: 45,
+    distanceMiles: 27.5,
+    highwayCorridor: 'E.O. Leblanc Coastal Highway · North West Pass',
+    streetViewImage: '/src/assets/images/dominica_street_view_coast_1791833350707.jpg',
+    compass: '335° NW',
+    elevation: '8m ASL',
+    speed: '58 km/h',
+    roadType: 'Coastal 2-Lane Highway',
+    coordinates: { x: 190, y: 150 },
+    pathD: 'M 240,480 C 210,380 200,280 195,200 S 190,165 190,150',
+  },
+  {
+    id: 'ROSEAU',
+    name: 'Roseau (Capital)',
+    shortName: 'Roseau',
+    district: 'St. George',
+    travelTime: '8 mins',
+    minutesRemaining: 8,
+    distanceMiles: 1.5,
+    highwayCorridor: 'Dame Eugenia Charles Blvd & Bayfront',
+    streetViewImage: '/src/assets/images/dominica_street_view_town_1791833375166.jpg',
+    compass: '184° S',
+    elevation: '6m ASL',
+    speed: '28 km/h',
+    roadType: 'Capital Waterfront Boulevard',
+    coordinates: { x: 240, y: 480 },
+    pathD: 'M 240,480 C 242,475 245,470 248,475 S 240,482 240,480',
+  },
+  {
+    id: 'DCF',
+    name: 'Canefield Airport (DCF)',
+    shortName: 'Canefield (DCF)',
+    district: 'St. Paul',
+    travelTime: '12 mins',
+    minutesRemaining: 12,
+    distanceMiles: 3.5,
+    highwayCorridor: 'E.O. Leblanc Highway · South West Gateway',
+    streetViewImage: '/src/assets/images/dominica_street_view_coast_1791833350707.jpg',
+    compass: '345° NNW',
+    elevation: '4m ASL',
+    speed: '50 km/h',
+    roadType: 'Coastal Highway Corridor',
+    coordinates: { x: 220, y: 420 },
+    pathD: 'M 240,480 C 235,460 225,440 220,420',
+  },
+  {
+    id: 'PONT_CASSE',
+    name: 'Pont Cassé',
+    shortName: 'Pont Cassé',
+    district: 'St. Paul',
+    travelTime: '22 mins',
+    minutesRemaining: 22,
+    distanceMiles: 9.2,
+    highwayCorridor: 'Imperial Road · Central Rainforest Pass',
+    streetViewImage: '/src/assets/images/dominica_street_view_rainforest_1791833359756.jpg',
+    compass: '042° NE',
+    elevation: '485m ASL',
+    speed: '42 km/h',
+    roadType: 'Highland Mountain Switchbacks',
+    coordinates: { x: 310, y: 350 },
+    pathD: 'M 240,480 C 265,430 290,390 310,350',
+  },
+  {
+    id: 'SOUFRIERE',
+    name: 'Soufrière',
+    shortName: 'Soufrière',
+    district: 'St. Mark',
+    travelTime: '20 mins',
+    minutesRemaining: 20,
+    distanceMiles: 8.5,
+    highwayCorridor: 'South Coast Scenic Corridor · Marine Reserve',
+    streetViewImage: '/src/assets/images/dominica_street_view_coast_1791833350707.jpg',
+    compass: '165° SSE',
+    elevation: '15m ASL',
+    speed: '45 km/h',
+    roadType: 'South Coastal Ridge Road',
+    coordinates: { x: 260, y: 550 },
+    pathD: 'M 240,480 C 250,505 255,530 260,550',
+  },
+  {
+    id: 'SCOTTS_HEAD',
+    name: 'Scotts Head',
+    shortName: 'Scotts Head',
+    district: 'St. Mark',
+    travelTime: '28 mins',
+    minutesRemaining: 28,
+    distanceMiles: 11.2,
+    highwayCorridor: 'South Peninsula Road · Soufriere Bay',
+    streetViewImage: '/src/assets/images/dominica_street_view_coast_1791833350707.jpg',
+    compass: '172° S',
+    elevation: '3m ASL',
+    speed: '40 km/h',
+    roadType: 'Peninsula Coastal Road',
+    coordinates: { x: 250, y: 580 },
+    pathD: 'M 240,480 C 250,505 260,545 250,580',
+  },
+  {
+    id: 'CASTLE_BRUCE',
+    name: 'Castle Bruce',
+    shortName: 'Castle Bruce',
+    district: 'St. David',
+    travelTime: '38 mins',
+    minutesRemaining: 38,
+    distanceMiles: 19.5,
+    highwayCorridor: 'East Coast Highway · Kalinago Territory Approach',
+    streetViewImage: '/src/assets/images/dominica_street_view_rainforest_1791833359756.jpg',
+    compass: '075° ENE',
+    elevation: '95m ASL',
+    speed: '48 km/h',
+    roadType: 'East Mountain Ridge',
+    coordinates: { x: 440, y: 310 },
+    pathD: 'M 240,480 C 280,410 330,360 440,310',
+  },
+  {
+    id: 'SALISBURY',
+    name: 'Salisbury (Barroui)',
+    shortName: 'Salisbury',
+    district: 'St. Joseph',
+    travelTime: '26 mins',
+    minutesRemaining: 26,
+    distanceMiles: 14.0,
+    highwayCorridor: 'E.O. Leblanc Coastal Highway · Central West Coast',
+    streetViewImage: '/src/assets/images/dominica_street_view_coast_1791833350707.jpg',
+    compass: '330° NW',
+    elevation: '10m ASL',
+    speed: '55 km/h',
+    roadType: 'West Coastal Highway',
+    coordinates: { x: 200, y: 290 },
+    pathD: 'M 240,480 C 220,420 210,350 200,290',
+  },
+  {
+    id: 'MERO',
+    name: 'Mero Beach',
+    shortName: 'Mero',
+    district: 'St. Joseph',
+    travelTime: '22 mins',
+    minutesRemaining: 22,
+    distanceMiles: 11.5,
+    highwayCorridor: 'E.O. Leblanc Coastal Highway · Silver Sand Shore',
+    streetViewImage: '/src/assets/images/dominica_street_view_coast_1791833350707.jpg',
+    compass: '332° NW',
+    elevation: '5m ASL',
+    speed: '56 km/h',
+    roadType: 'West Coastal Highway',
+    coordinates: { x: 205, y: 320 },
+    pathD: 'M 240,480 C 225,430 215,370 205,320',
+  },
+  {
+    id: 'CALIBISHIE',
+    name: 'Calibishie',
+    shortName: 'Calibishie',
+    district: 'St. Andrew',
+    travelTime: '60 mins',
+    minutesRemaining: 60,
+    distanceMiles: 38.0,
+    highwayCorridor: 'North Coast Red Rocks Corridor',
+    streetViewImage: '/src/assets/images/dominica_street_view_coast_1791833350707.jpg',
+    compass: '015° NNE',
+    elevation: '18m ASL',
+    speed: '50 km/h',
+    roadType: 'Northern Scenic Coastal Highway',
+    coordinates: { x: 440, y: 80 },
+    pathD: 'M 240,480 C 280,380 370,250 490,110 S 450,90 440,80',
+  },
+  {
+    id: 'GRAND_BAY',
+    name: 'Grand Bay (Berekua)',
+    shortName: 'Grand Bay',
+    district: 'St. Patrick',
+    travelTime: '32 mins',
+    minutesRemaining: 32,
+    distanceMiles: 13.5,
+    highwayCorridor: 'South East Highway · Geneva Valley',
+    streetViewImage: '/src/assets/images/dominica_street_view_rainforest_1791833359756.jpg',
+    compass: '145° SE',
+    elevation: '120m ASL',
+    speed: '44 km/h',
+    roadType: 'South East Mountain Corridor',
+    coordinates: { x: 330, y: 540 },
+    pathD: 'M 240,480 C 270,500 300,520 330,540',
+  },
+  {
+    id: 'MARIGOT',
+    name: 'Marigot',
+    shortName: 'Marigot',
+    district: 'St. Andrew',
+    travelTime: '52 mins',
+    minutesRemaining: 52,
+    distanceMiles: 32.5,
+    highwayCorridor: 'Nicholas Liverpool Highway · Marigot Bay',
+    streetViewImage: '/src/assets/images/dominica_street_view_coast_1791833350707.jpg',
+    compass: '035° NE',
+    elevation: '14m ASL',
+    speed: '60 km/h',
+    roadType: 'North East Coastal Highway',
+    coordinates: { x: 470, y: 140 },
+    pathD: 'M 240,480 C 270,390 350,280 440,180 S 465,150 470,140',
+  },
+  {
+    id: 'SALYBIA',
+    name: 'Salybia (Kalinago Barana Autê)',
+    shortName: 'Salybia',
+    district: 'St. David',
+    travelTime: '48 mins',
+    minutesRemaining: 48,
+    distanceMiles: 26.0,
+    highwayCorridor: 'Kalinago Heritage Highway',
+    streetViewImage: '/src/assets/images/dominica_street_view_rainforest_1791833359756.jpg',
+    compass: '065° ENE',
+    elevation: '70m ASL',
+    speed: '45 km/h',
+    roadType: 'Indigenous Territory Scenic Route',
+    coordinates: { x: 470, y: 250 },
+    pathD: 'M 240,480 C 290,410 370,330 470,250',
+  },
+];
+
+export function resolveEliteLocationMeta(queryOrId?: string): EliteEstimationLocationMeta {
+  if (!queryOrId) return ELITE_ESTIMATION_LOCATIONS_META[0];
+  const q = queryOrId.toLowerCase().trim();
+  const direct = ELITE_ESTIMATION_LOCATIONS_META.find(
+    (item) => item.id.toLowerCase() === q || item.name.toLowerCase() === q || item.shortName.toLowerCase() === q
+  );
+  if (direct) return direct;
+
+  const partial = ELITE_ESTIMATION_LOCATIONS_META.find(
+    (item) =>
+      item.name.toLowerCase().includes(q) ||
+      item.shortName.toLowerCase().includes(q) ||
+      item.district.toLowerCase().includes(q) ||
+      item.id.toLowerCase().includes(q)
+  );
+  if (partial) return partial;
+
+  const domLoc = DOMINICA_LOCATIONS.find((l) => l.id.toLowerCase() === q || l.name.toLowerCase().includes(q));
+  const name = domLoc ? domLoc.name : queryOrId;
+  const miles = domLoc ? getRouteMiles('ROSEAU', domLoc.id) : 15.0;
+  const minutes = Math.max(8, Math.round(miles * 1.6));
+  return {
+    id: domLoc ? domLoc.id : 'CUSTOM',
+    name,
+    shortName: name.split(' ')[0] || name,
+    district: domLoc?.area ? `Dominica (${domLoc.area})` : 'Commonwealth of Dominica',
+    travelTime: `${minutes} mins`,
+    minutesRemaining: minutes,
+    distanceMiles: miles,
+    highwayCorridor: 'Commonwealth Island Highway',
+    streetViewImage: '/src/assets/images/dominica_street_view_coast_1791833350707.jpg',
+    compass: '350° N',
+    elevation: '40m ASL',
+    speed: '45 km/h',
+    roadType: 'Dominica Island Corridor',
+    coordinates: { x: 260, y: 380 },
+    pathD: 'M 240,480 Q 250,420 260,380',
+  };
+}
+

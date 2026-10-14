@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, X, Car, ShieldCheck, User, Radio, UserPlus, LayoutDashboard } from 'lucide-react';
-import { AppView, Currency, RiderProfile } from '../types/booking';
+import { AppView, Currency, RiderProfile, ActiveDriver } from '../types/booking';
+import { EliteRideLogo } from './EliteRideLogo';
 
 interface NavbarProps {
   currentView: AppView;
@@ -10,6 +11,8 @@ interface NavbarProps {
   hasActiveRide: boolean;
   currentRider: RiderProfile | null;
   onOpenRiderAuth: () => void;
+  currentDriver?: ActiveDriver | null;
+  onOpenDriverSignUp?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,19 +23,26 @@ export const Navbar: React.FC<NavbarProps> = ({
   hasActiveRide,
   currentRider,
   onOpenRiderAuth,
+  currentDriver,
+  onOpenDriverSignUp,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 bg-neutral-950/90 backdrop-blur-md border-b border-neutral-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
-        {/* Zone 1: Wordmark */}
+        {/* Zone 1: Official Elite Ride Logo */}
         <button
           onClick={() => onNavigate('book')}
-          className="text-xl sm:text-2xl font-bold tracking-tight text-white whitespace-nowrap shrink-0 flex items-center gap-2 group text-left cursor-pointer"
+          className="shrink-0 flex items-center text-left cursor-pointer group focus:outline-none"
+          aria-label="Elite Ride Dominica Home"
         >
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block transition-transform group-hover:scale-125" />
-          <span>Elite Ride Dominica</span>
+          <EliteRideLogo
+            variant="horizontal"
+            size="sm"
+            theme="dark"
+            className="hover:opacity-95 transition-opacity"
+          />
         </button>
 
         {/* Zone 2: Navigation Links (Single-line, no wraps) */}
@@ -133,7 +143,31 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Primary Action Button */}
+          {/* Driver Sign Up / Console CTA */}
+          {currentDriver ? (
+            <button
+              onClick={() => onNavigate('driver_portal')}
+              type="button"
+              className="px-3 py-1.5 text-xs font-semibold text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 hover:border-emerald-500 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title="Open Driver Partner Console"
+            >
+              <Car className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Driver: {currentDriver.name.split(' ')[0]}</span>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1 rounded font-mono">
+                {currentDriver.licensePlate}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={onOpenDriverSignUp}
+              type="button"
+              className="px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:text-white bg-neutral-900 hover:bg-neutral-800 border border-emerald-500/60 hover:border-emerald-400 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 shadow-sm cursor-pointer"
+              title="Sign up as a verified driver in Dominica"
+            >
+              <Car className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Driver Sign Up</span>
+            </button>
+          )}
           {hasActiveRide ? (
             <button
               onClick={() => onNavigate('tracking')}
@@ -217,20 +251,32 @@ export const Navbar: React.FC<NavbarProps> = ({
             Safety, Terms & 15% Cancellation Fee
           </button>
 
-          <div className="pt-3 border-t border-neutral-800 flex items-center justify-between">
-            <button
-              onClick={() => {
-                onOpenRiderAuth();
-                setMobileMenuOpen(false);
-              }}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-400 text-neutral-950 flex items-center gap-1.5"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>{currentRider ? `Rider: ${currentRider.fullName}` : 'Sign Up for Riders'}</span>
-            </button>
+          <div className="pt-3 border-t border-neutral-800 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  onOpenRiderAuth();
+                  setMobileMenuOpen(false);
+                }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-400 text-neutral-950 flex items-center gap-1.5 cursor-pointer"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>{currentRider ? `Rider: ${currentRider.fullName.split(' ')[0]}` : 'Rider Sign Up'}</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (onOpenDriverSignUp) onOpenDriverSignUp();
+                  setMobileMenuOpen(false);
+                }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-neutral-900 border border-emerald-500/60 text-emerald-400 hover:text-white flex items-center gap-1.5 cursor-pointer"
+              >
+                <Car className="w-3.5 h-3.5" />
+                <span>{currentDriver ? `Driver: ${currentDriver.name.split(' ')[0]}` : 'Driver Sign Up'}</span>
+              </button>
+            </div>
             <button
               onClick={onToggleCurrency}
-              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-neutral-700 text-emerald-400"
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-neutral-700 text-emerald-400 cursor-pointer"
             >
               Currency: {currency === 'XCD' ? 'EC$' : 'USD'}
             </button>

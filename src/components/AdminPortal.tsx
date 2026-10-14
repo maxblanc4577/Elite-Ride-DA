@@ -25,6 +25,7 @@ import {
 import { VEHICLE_TIERS, DOMINICA_LOCATIONS } from '../data/dominicaData';
 import { Currency } from '../types/booking';
 import { formatFare } from '../utils/pricing';
+import { EliteRideLogo } from './EliteRideLogo';
 
 interface AdminPortalProps {
   currency: Currency;
@@ -188,53 +189,56 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ currency }) => {
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Admin Portal Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-neutral-800">
-        <div>
-          <span className="text-xs uppercase tracking-widest text-emerald-400 font-semibold block">
-            Central Dispatch & Operations Control · #DOM-ER-2026
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-            Elite Ride Admin Portal
-          </h2>
+        <div className="flex items-center gap-3.5">
+          <EliteRideLogo variant="mark" size="sm" theme="dark" />
+          <div>
+            <span className="text-xs uppercase tracking-widest text-emerald-400 font-semibold block">
+              Central Dispatch & Operations Control · #DOM-ER-2026
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+              Elite Ride Admin Portal
+            </h2>
+          </div>
         </div>
 
-        {/* Admin Navigation Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-semibold">
+        {/* Consolidated Admin Navigation Tabs */}
+        <div className="inline-flex flex-wrap items-center gap-1 p-1 bg-neutral-950 border border-neutral-800 rounded-xl text-xs font-semibold shadow-inner">
           <button
             onClick={() => setAdminTab('driver_console')}
-            className={`px-3.5 py-2 rounded-lg transition-colors ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               adminTab === 'driver_console'
-                ? 'bg-emerald-500 text-neutral-950 shadow-sm'
-                : 'text-neutral-300 hover:text-white'
+                ? 'bg-emerald-500 text-neutral-950 font-bold shadow-sm'
+                : 'text-neutral-400 hover:text-white hover:bg-neutral-900/60'
             }`}
           >
             Active Driver Console
           </button>
           <button
             onClick={() => setAdminTab('live_dispatch')}
-            className={`px-3.5 py-2 rounded-lg transition-colors ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               adminTab === 'live_dispatch'
-                ? 'bg-emerald-500 text-neutral-950 shadow-sm'
-                : 'text-neutral-300 hover:text-white'
+                ? 'bg-emerald-500 text-neutral-950 font-bold shadow-sm'
+                : 'text-neutral-400 hover:text-white hover:bg-neutral-900/60'
             }`}
           >
             Live Dispatch Radar
           </button>
           <button
             onClick={() => setAdminTab('applications')}
-            className={`px-3.5 py-2 rounded-lg transition-colors ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               adminTab === 'applications'
-                ? 'bg-emerald-500 text-neutral-950 shadow-sm'
-                : 'text-neutral-300 hover:text-white'
+                ? 'bg-emerald-500 text-neutral-950 font-bold shadow-sm'
+                : 'text-neutral-400 hover:text-white hover:bg-neutral-900/60'
             }`}
           >
             Driver Applications
           </button>
           <button
             onClick={() => setAdminTab('revenue')}
-            className={`px-3.5 py-2 rounded-lg transition-colors ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               adminTab === 'revenue'
-                ? 'bg-emerald-500 text-neutral-950 shadow-sm'
-                : 'text-neutral-300 hover:text-white'
+                ? 'bg-emerald-500 text-neutral-950 font-bold shadow-sm'
+                : 'text-neutral-400 hover:text-white hover:bg-neutral-900/60'
             }`}
           >
             Platform & 15% VAT

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, X, CheckCircle2, Phone, Mail, MapPin, CreditCard, ShieldCheck } from 'lucide-react';
 import { DOMINICA_LOCATIONS, PAYMENT_METHODS } from '../data/dominicaData';
 import { RiderProfile } from '../types/booking';
+import { EliteRideLogo } from './EliteRideLogo';
 
 interface RiderAuthModalProps {
   isOpen: boolean;
@@ -54,6 +55,13 @@ export const RiderAuthModal: React.FC<RiderAuthModalProps> = ({
       nbdAccountNumber: formData.nbdAccountNumber,
       tripsCount: mode === 'signup' ? 0 : 4,
     };
+
+    if (typeof window !== 'undefined') {
+      if ((window as any).resetRideLocationAndFare) {
+        (window as any).resetRideLocationAndFare();
+      }
+      window.dispatchEvent(new CustomEvent('eliteride_reset_location_and_fare'));
+    }
 
     onLogin(rider);
     onClose();
@@ -125,8 +133,8 @@ export const RiderAuthModal: React.FC<RiderAuthModalProps> = ({
           /* Sign Up / Sign In Form */
           <div>
             <div className="text-center mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-3">
-                <User className="w-6 h-6" />
+              <div className="flex justify-center mb-3">
+                <EliteRideLogo variant="mark" size="md" theme="dark" />
               </div>
               <h3 className="text-xl font-bold text-white">
                 {mode === 'signup' ? 'Create Rider Account' : 'Welcome Back'}

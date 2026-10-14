@@ -11,9 +11,10 @@ import { LiveTrackingSimulator } from './components/LiveTrackingSimulator';
 import { DriverPortal } from './components/DriverPortal';
 import { AdminPortal } from './components/AdminPortal';
 import { RiderAuthModal } from './components/RiderAuthModal';
+import { DriverSignUpModal } from './components/DriverSignUpModal';
 import { PoliciesSection } from './components/PoliciesSection';
 import { Footer } from './components/Footer';
-import { AppView, Currency, ActiveRide, RiderProfile } from './types/booking';
+import { AppView, Currency, ActiveRide, RiderProfile, ActiveDriver } from './types/booking';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('book');
@@ -31,6 +32,35 @@ export default function App() {
   });
   const [isRiderAuthOpen, setIsRiderAuthOpen] = useState(false);
 
+  // Driver partner profile state
+  const [currentDriver, setCurrentDriver] = useState<ActiveDriver | null>(() => {
+    try {
+      const saved = localStorage.getItem('elite_ride_driver');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isDriverSignUpOpen, setIsDriverSignUpOpen] = useState(false);
+
+  const handleDriverRegistered = (driver: ActiveDriver) => {
+    setCurrentDriver(driver);
+    try {
+      localStorage.setItem('elite_ride_driver', JSON.stringify(driver));
+    } catch {
+      // storage unavailable
+    }
+  };
+
+  const handleDriverSignOut = () => {
+    setCurrentDriver(null);
+    try {
+      localStorage.removeItem('elite_ride_driver');
+    } catch {
+      // storage unavailable
+    }
+  };
+
   const toggleCurrency = () => {
     setCurrency((prev) => (prev === 'XCD' ? 'USD' : 'XCD'));
   };
@@ -42,6 +72,13 @@ export default function App() {
     } catch {
       // storage unavailable
     }
+    // Location, Fare Calculation & Final Price Reset on Login
+    if (typeof window !== 'undefined') {
+      if ((window as any).resetRideLocationAndFare) {
+        (window as any).resetRideLocationAndFare();
+      }
+      window.dispatchEvent(new CustomEvent('eliteride_reset_location_and_fare'));
+    }
   };
 
   const handleRiderLogout = () => {
@@ -50,6 +87,13 @@ export default function App() {
       localStorage.removeItem('elite_ride_rider');
     } catch {
       // storage unavailable
+    }
+    // Location, Fare Calculation & Final Price Reset on Logout
+    if (typeof window !== 'undefined') {
+      if ((window as any).resetRideLocationAndFare) {
+        (window as any).resetRideLocationAndFare();
+      }
+      window.dispatchEvent(new CustomEvent('eliteride_reset_location_and_fare'));
     }
   };
 
@@ -71,7 +115,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans selection:bg-emerald-600 selection:text-white">
-      {/* 3-Zone Clean Header with Admin Portal & Rider Sign Up */}
+      {/* 3-Zone Clean Header with Admin Portal, Rider Sign Up & Driver Sign Up */}
       <Navbar
         currentView={currentView}
         onNavigate={(view) => {
@@ -83,6 +127,8 @@ export default function App() {
         hasActiveRide={activeRide !== null}
         currentRider={currentRider}
         onOpenRiderAuth={() => setIsRiderAuthOpen(true)}
+        currentDriver={currentDriver}
+        onOpenDriverSignUp={() => setIsDriverSignUpOpen(true)}
       />
 
       <main className="flex-1 pb-16">
@@ -99,6 +145,7 @@ export default function App() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               onOpenRiderSignUp={() => setIsRiderAuthOpen(true)}
+              onOpenDriverSignUp={() => setIsDriverSignUpOpen(true)}
               onOpenAdminPortal={() => {
                 setCurrentView('admin_portal');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -165,6 +212,19 @@ export default function App() {
         onLogin={handleRiderLogin}
         currentRider={currentRider}
         onLogout={handleRiderLogout}
+      />
+
+      {/* Driver Partner Sign Up & Onboarding Modal */}
+      <DriverSignUpModal
+        isOpen={isDriverSignUpOpen}
+        onClose={() => setIsDriverSignUpOpen(false)}
+        onDriverRegistered={(driver) => {
+          handleDriverRegistered(driver);
+          setCurrentView('driver_portal');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        currentDriver={currentDriver}
+        onDriverSignOut={handleDriverSignOut}
       />
     </div>
   );

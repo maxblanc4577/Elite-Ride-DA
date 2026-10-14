@@ -1,6 +1,7 @@
 import React from 'react';
 import { ShieldCheck, MapPin, Phone, Mail } from 'lucide-react';
 import { AppView } from '../types/booking';
+import { EliteRideLogo } from './EliteRideLogo';
 
 interface FooterProps {
   onNavigate: (view: AppView) => void;
@@ -13,10 +14,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 pb-12 border-b border-neutral-900">
           {/* Brand Info */}
           <div className="md:col-span-1 space-y-4">
-            <div className="flex items-center gap-2 text-white font-bold text-lg">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-              <span>Elite Ride Dominica Ltd.</span>
-            </div>
+            <EliteRideLogo
+              variant="horizontal"
+              size="md"
+              theme="dark"
+              showTagline={true}
+              onClick={() => onNavigate('book')}
+              className="cursor-pointer"
+            />
             <p className="text-xs text-neutral-400 leading-relaxed">
               Official on-demand ride-hailing and transit platform operating in the Commonwealth of Dominica under
               commercial registration <strong>#DOM-ER-2026</strong>.

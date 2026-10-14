@@ -2,7 +2,7 @@ import { VehicleTier } from '../data/dominicaData';
 
 export type Currency = 'XCD' | 'USD';
 
-export type AppView = 'book' | 'tracking' | 'admin_portal' | 'driver_portal' | 'policies';
+export type AppView = 'home' | 'book' | 'tracking' | 'admin_portal' | 'driver_portal' | 'policies';
 
 export interface RiderProfile {
   id: string;
@@ -22,6 +22,7 @@ export interface RideBookingData {
   customDropoff: string;
   hasStopover: boolean;
   stopoverId: string;
+  additionalStops?: string[];
   vehicleTierId: string;
   isScheduled: boolean;
   scheduleDate: string;
@@ -35,6 +36,9 @@ export interface RideBookingData {
   passengerEmail: string;
   flightNumber: string;
   notes: string;
+  isSplitFare?: boolean;
+  splitPassengersCount?: number;
+  splitPaymentLink?: string;
 }
 
 export interface FareCalculation {
@@ -47,6 +51,8 @@ export interface FareCalculation {
   totalXCD: number;
   totalUSD: number;
   tier: VehicleTier;
+  splitFareXCD?: number;
+  splitFareUSD?: number;
 }
 
 export interface ActiveDriver {
