@@ -54,8 +54,8 @@ export const RideEstimationWidget: React.FC<RideEstimationWidgetProps> = ({
   isFareReset = false,
   onResetRideAndFare,
 }) => {
-  // Current view mode: 'route-path' or 'live-map'
-  const [viewMode, setViewMode] = useState<'route-path' | 'live-map'>('route-path');
+  // Current view mode: 'live-map' or 'hidden' (route-path view removed)
+  const [viewMode, setViewMode] = useState<'live-map' | 'hidden'>('hidden');
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -482,13 +482,13 @@ export const RideEstimationWidget: React.FC<RideEstimationWidgetProps> = ({
             <button
               id="est-toggle-map-view-btn"
               type="button"
-              onClick={() => setViewMode((prev) => (prev === 'route-path' ? 'live-map' : 'route-path'))}
+              onClick={() => setViewMode((prev) => (prev === 'live-map' ? 'hidden' : 'live-map'))}
               className="px-3.5 py-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow"
-              title="Toggle between Route Path View and Live Map View"
+              title="Toggle interactive Live GPS Map"
             >
               <Layers className="w-3.5 h-3.5 text-emerald-400" />
               <span>
-                {viewMode === 'route-path' ? 'Switch to Live Map View' : 'Switch to Route Path View'}
+                {viewMode === 'live-map' ? 'Hide Live Map' : 'Show Interactive Live Map'}
               </span>
             </button>
 
@@ -741,101 +741,7 @@ export const RideEstimationWidget: React.FC<RideEstimationWidgetProps> = ({
           </div>
         )}
 
-        {/* ================= VIEW 1: ROUTE PATH VIEW ================= */}
-        {viewMode === 'route-path' && (
-          <div
-            id="est-route-path-view"
-            className="relative h-72 sm:h-96 bg-neutral-950 overflow-hidden flex items-center justify-center p-4"
-          >
-            {/* Background Dominica Topographic Island Silhouette */}
-            <svg
-              viewBox="0 0 600 600"
-              className="w-full h-full max-h-96 select-none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              {/* Island contour of Dominica */}
-              <path
-                d="M 280,30 C 370,35 460,70 510,120 C 550,170 540,240 520,310 C 490,400 420,490 350,550 C 290,590 230,570 200,520 C 170,470 160,390 170,300 C 180,210 200,120 230,60 Z"
-                fill="#064e3b"
-                fillOpacity="0.25"
-                stroke="#10b981"
-                strokeWidth="1.5"
-                strokeOpacity="0.4"
-              />
 
-              {/* Central Mountain Peaks (Morne Trois Pitons / Morne Diablotins) */}
-              <circle cx="280" cy="180" r="45" fill="#047857" fillOpacity="0.2" />
-              <circle cx="330" cy="380" r="55" fill="#047857" fillOpacity="0.2" />
-
-              {/* Secondary Highway Grid */}
-              <path
-                d="M 240,480 L 220,420 L 205,320 L 200,290 L 190,150 L 250,90 L 440,80 L 490,110 L 470,140 L 440,310 L 330,540 L 260,550 Z"
-                fill="none"
-                stroke="#065f46"
-                strokeWidth="1"
-                strokeDasharray="3 3"
-              />
-
-              {/* The Active Route Path with CSS transitions and pulsing glow */}
-              <path
-                id="svg-route-path"
-                className="svg-route-path animate-pulse-glow"
-                d={currentMeta.pathD}
-                fill="none"
-                stroke="#34d399"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeDasharray="600"
-                strokeDashoffset={isFareReset ? '600' : '0'}
-              />
-
-              {/* Pickup Origin Marker Pin (Roseau) */}
-              <g transform="translate(240, 480)">
-                <circle r="9" fill="#059669" />
-                <circle r="4" fill="#ffffff" />
-                <text x="14" y="4" fill="#a7f3d0" fontSize="11" fontFamily="monospace" fontWeight="bold">
-                  {pickupLocationObj.name.split(' ')[0]} (Pickup)
-                </text>
-              </g>
-
-              {/* Destination Dropoff Marker Pin (Dynamic Destination) */}
-              <g transform={`translate(${currentMeta.coordinates.x}, ${currentMeta.coordinates.y})`}>
-                <circle r="11" fill="#10b981" className="animate-ping" opacity="0.75" />
-                <circle r="8" fill="#10b981" />
-                <circle r="3" fill="#ffffff" />
-                <text x="14" y="4" fill="#ffffff" fontSize="12" fontFamily="sans-serif" fontWeight="bold">
-                  {currentMeta.shortName}
-                </text>
-              </g>
-
-              {/* Live Vehicle in motion along corridor */}
-              <g
-                transform={`translate(${
-                  Math.round(240 + (currentMeta.coordinates.x - 240) * (completedPct / 100 || 0.45))
-                }, ${
-                  Math.round(480 + (currentMeta.coordinates.y - 480) * (completedPct / 100 || 0.45))
-                })`}
-              >
-                <circle r="12" fill="#022c22" stroke="#34d399" strokeWidth="2" />
-                <circle r="5" fill="#34d399" />
-              </g>
-            </svg>
-
-            {/* Overlaid Route Progress Details Badge */}
-            <div className="absolute bottom-4 left-4 bg-neutral-900/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-neutral-800 text-xs text-neutral-300">
-              <span className="text-[10px] uppercase font-mono text-neutral-400 block font-semibold">
-                Active Transit Corridor
-              </span>
-              <span className="font-bold text-white text-xs">{currentMeta.highwayCorridor}</span>
-            </div>
-
-            <div className="absolute top-4 right-4 bg-neutral-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-neutral-800 text-right text-xs font-mono">
-              <span className="text-emerald-400 font-bold block">{distanceMiles} Miles</span>
-              <span className="text-[10px] text-neutral-400">Road Gradient Normal</span>
-            </div>
-          </div>
-        )}
 
         {/* ================= VIEW 2: LIVE MAP VIEW WITH INTERACTIVE ZOOM ================= */}
         {viewMode === 'live-map' && (

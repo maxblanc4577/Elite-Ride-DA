@@ -81,3 +81,21 @@ export interface ActiveRide {
   stopoverLabel?: string;
   cancelGracePeriodSeconds: number;
 }
+
+export interface RideHistoryItem {
+  id: string;
+  riderId: string;
+  date: string;
+  timestamp: number;
+  pickup: string;
+  dropoff: string;
+  stopover?: string;
+  tierName: string;
+  driverName: string;
+  vehicleModel: string;
+  fareXCD: number;
+  fareUSD: number;
+  paymentMethod: string;
+  status: 'completed' | 'cancelled' | 'in_transit';
+  rating?: number;
+}

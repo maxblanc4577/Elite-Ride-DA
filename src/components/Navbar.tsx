@@ -33,7 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
         {/* Zone 1: Official Elite Ride Logo */}
         <button
-          onClick={() => onNavigate('book')}
+          onClick={() => onNavigate('home')}
           className="shrink-0 flex items-center text-left cursor-pointer group focus:outline-none"
           aria-label="Elite Ride Dominica Home"
         >
@@ -47,6 +47,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 2: Navigation Links (Single-line, no wraps) */}
         <nav className="hidden lg:flex items-center gap-5 text-xs sm:text-sm font-medium text-neutral-300">
+          <button
+            onClick={() => onNavigate('home')}
+            className={`transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+              currentView === 'home' ? 'text-emerald-400 font-bold' : 'hover:text-emerald-400'
+            }`}
+          >
+            Home
+          </button>
+
           <button
             onClick={() => onNavigate('book')}
             className={`transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
@@ -206,12 +215,21 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="lg:hidden border-b border-neutral-800 bg-neutral-950 px-4 py-5 space-y-3">
           <button
             onClick={() => {
+              onNavigate('home');
+              setMobileMenuOpen(false);
+            }}
+            className="block w-full text-left text-sm font-medium text-neutral-300 hover:text-emerald-400 py-1"
+          >
+            Home Overview
+          </button>
+          <button
+            onClick={() => {
               onNavigate('book');
               setMobileMenuOpen(false);
             }}
             className="block w-full text-left text-sm font-medium text-neutral-300 hover:text-emerald-400 py-1"
           >
-            Book a Ride (Immediate & Scheduled)
+            Book a Ride (Phase 2 Terminal)
           </button>
           <button
             onClick={() => {

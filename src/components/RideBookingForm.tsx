@@ -44,6 +44,8 @@ interface RideBookingFormProps {
   onRideDispatched: (ride: ActiveRide) => void;
   currentRider?: RiderProfile | null;
   onOpenRiderAuth?: () => void;
+  selectedTierId?: string;
+  onTierChange?: (tierId: string) => void;
 }
 
 export const RideBookingForm: React.FC<RideBookingFormProps> = ({
@@ -51,6 +53,8 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
   onRideDispatched,
   currentRider,
   onOpenRiderAuth,
+  selectedTierId = 'standard-sedan',
+  onTierChange,
 }) => {
   const [booking, setBooking] = useState<RideBookingData>({
     pickupId: 'ROSEAU',
@@ -60,7 +64,7 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
     hasStopover: false,
     stopoverId: 'PONT_CASSE',
     additionalStops: [],
-    vehicleTierId: 'mountain-4wd-suv',
+    vehicleTierId: selectedTierId || 'standard-sedan',
     isScheduled: false,
     scheduleDate: new Date().toISOString().split('T')[0],
     scheduleTime: '15:00',
@@ -80,6 +84,7 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVehicleSectionOpen, setIsVehicleSectionOpen] = useState(false);
+  const [isPaymentSectionOpen, setIsPaymentSectionOpen] = useState(false);
 
   // Split fare UI state for 'Elite Shared Coaster'
   const [splitPassengersCount, setSplitPassengersCount] = useState<number>(4);
@@ -133,9 +138,19 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
     }
   }, [currentRider]);
 
+  // Sync selectedTierId when passed from parent or quick selector
+  useEffect(() => {
+    if (selectedTierId && selectedTierId !== booking.vehicleTierId) {
+      setBooking((prev) => ({ ...prev, vehicleTierId: selectedTierId }));
+    }
+  }, [selectedTierId]);
+
   const handleFieldChange = (field: keyof RideBookingData, value: any) => {
     setIsFareReset(false);
     setBooking((prev) => ({ ...prev, [field]: value }));
+    if (field === 'vehicleTierId' && onTierChange) {
+      onTierChange(value);
+    }
     if (formErrors[field]) {
       setFormErrors((prev) => {
         const u = { ...prev };
@@ -333,21 +348,29 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
     booking.pickupId === 'DCF' ||
     booking.dropoffId === 'DCF';
 
+  const selectedPaymentMethod = PAYMENT_METHODS.find((m) => m.id === booking.paymentMethod);
+
   return (
     <div className="max-w-7xl mx-auto">
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Ride Routing & Tier Selection (8 Cols) */}
-        <div className="lg:col-span-8 bg-neutral-900 border border-neutral-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-7">
+        {/* Left Column: Ride Routing & Tier Selection (8 Cols) - CSS Selector 1 */}
+        <div className="lg:col-span-8 bg-gradient-to-b from-neutral-900/95 via-neutral-900 to-neutral-950 border border-neutral-800/90 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-7 ring-1 ring-emerald-500/20 backdrop-blur-sm relative">
           {/* Header & Timing Switch */}
           <div className="flex flex-wrap items-center justify-between pb-5 border-b border-neutral-800 gap-4">
             <div className="flex items-center gap-3">
               <EliteRideLogo variant="mark" size="sm" theme="dark" />
               <div>
-                <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest block">
-                  On-Demand Dispatch · Dominica #DOM-ER-2026
-                </span>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-xs font-semibold text-emerald-400 uppercase tracking-widest block">
+                    Dominica Dispatch #DOM-ER-2026
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Phase 2
+                  </span>
+                </div>
                 <h2 className="text-xl sm:text-2xl font-extrabold text-white">
-                  Book an Elite Ride
+                  Configure &amp; Book Your Ride
                 </h2>
               </div>
             </div>
@@ -607,15 +630,21 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
             onResetRideAndFare={handleResetRideAndFare}
           />
 
-          {/* Vehicle Tier Selection Cards (Collapsible) */}
-          <div className="border border-neutral-800 rounded-2xl p-4 bg-neutral-950/60">
+          {/* Vehicle Tier Selection Cards (Collapsible) - CSS Selector: div:nth-of-type(4) */}
+          <div
+            className={`border rounded-2xl p-4 sm:p-5 transition-all duration-300 ${
+              booking.vehicleTierId === 'standard-sedan'
+                ? 'border-emerald-500/80 bg-gradient-to-br from-neutral-950 via-neutral-900 to-emerald-950/25 ring-1 ring-emerald-500/40 shadow-xl shadow-emerald-950/30'
+                : 'border-neutral-800 bg-neutral-950/60'
+            }`}
+          >
             <button
               type="button"
               onClick={() => setIsVehicleSectionOpen(!isVehicleSectionOpen)}
               className="w-full flex items-center justify-between text-left focus:outline-none group cursor-pointer"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-12 h-10 rounded-xl bg-neutral-900 overflow-hidden shrink-0 border border-neutral-800">
+                <div className="w-14 h-11 rounded-xl bg-neutral-900 overflow-hidden shrink-0 border border-neutral-800 shadow-inner">
                   {(() => {
                     const activeTier = VEHICLE_TIERS.find((t) => t.id === booking.vehicleTierId) || VEHICLE_TIERS[0];
                     return (
@@ -629,25 +658,33 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
                   })()}
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-bold text-white uppercase tracking-wider">
-                      Select Vehicle Category
+                      Selected Vehicle Category
                     </span>
                     {(() => {
                       const activeTier = VEHICLE_TIERS.find((t) => t.id === booking.vehicleTierId) || VEHICLE_TIERS[0];
                       return (
-                        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
-                          {activeTier.badge}
-                        </span>
+                        <>
+                          <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
+                            {activeTier.badge}
+                          </span>
+                          {activeTier.id === 'standard-sedan' && (
+                            <span className="text-[10px] text-emerald-300 font-bold bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40 flex items-center gap-1">
+                              <Check className="w-2.5 h-2.5 text-emerald-400" />
+                              <span>Elite Standard Sedan</span>
+                            </span>
+                          )}
+                        </>
                       );
                     })()}
                   </div>
                   {(() => {
                     const activeTier = VEHICLE_TIERS.find((t) => t.id === booking.vehicleTierId) || VEHICLE_TIERS[0];
                     return (
-                      <div className="text-xs text-neutral-300 font-semibold truncate mt-0.5">
-                        {activeTier.name}
-                        <span className="text-neutral-500 font-normal ml-2">
+                      <div className="text-xs text-neutral-300 font-semibold truncate mt-0.5 flex items-center gap-2">
+                        <span className="text-white font-bold">{activeTier.name}</span>
+                        <span className="text-neutral-500 font-normal">
                           ({activeTier.capacityPassengers} seats · {activeTier.capacityLuggage} bags)
                         </span>
                       </div>
@@ -658,7 +695,7 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
 
               <div className="flex items-center gap-2 shrink-0 ml-3">
                 <span className="text-xs text-neutral-400 group-hover:text-emerald-400 font-medium hidden sm:inline">
-                  {isVehicleSectionOpen ? 'Collapse' : 'Change Category'}
+                  {isVehicleSectionOpen ? 'Close Grid' : 'Browse All 4 Tiers'}
                 </span>
                 <div className="p-1.5 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-300 group-hover:text-emerald-400 transition-colors">
                   {isVehicleSectionOpen ? (
@@ -669,6 +706,32 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
                 </div>
               </div>
             </button>
+
+            {/* Quick One-Tap Tier Switcher Bar */}
+            <div className="mt-3.5 pt-3 border-t border-neutral-800/80 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mr-1 flex items-center gap-1">
+                <Car className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Tier Quick-Select:</span>
+              </span>
+              {VEHICLE_TIERS.map((tier) => {
+                const isSelected = booking.vehicleTierId === tier.id;
+                return (
+                  <button
+                    type="button"
+                    key={tier.id}
+                    onClick={() => handleFieldChange('vehicleTierId', tier.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-emerald-500 text-neutral-950 font-bold shadow-md ring-2 ring-emerald-400/50 scale-[1.02]'
+                        : 'bg-neutral-900 text-neutral-300 hover:text-white hover:bg-neutral-800 border border-neutral-800'
+                    }`}
+                  >
+                    <span>{tier.name}</span>
+                    {isSelected && <Check className="w-3 h-3 text-neutral-950 stroke-[3]" />}
+                  </button>
+                );
+              })}
+            </div>
 
             {/* Expanded Content */}
             {isVehicleSectionOpen && (
@@ -694,7 +757,7 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
                         }}
                         className={`cursor-pointer rounded-2xl p-4 border transition-all flex flex-col justify-between ${
                           isSelected
-                            ? 'bg-neutral-800/90 border-emerald-500 ring-1 ring-emerald-500'
+                            ? 'bg-neutral-850 border-emerald-500 ring-2 ring-emerald-500/60 shadow-lg shadow-emerald-950/40'
                             : 'bg-neutral-950/80 border-neutral-800 hover:border-neutral-700'
                         }`}
                       >
@@ -707,9 +770,16 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
                               className="w-full h-full object-cover"
                               referrerPolicy="no-referrer"
                             />
-                            <div className="absolute top-2 left-2 bg-neutral-950/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold text-emerald-400 border border-neutral-800">
-                              {tier.badge}
+                            <div className="absolute top-2 left-2 bg-neutral-950/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold text-emerald-400 border border-neutral-800 flex items-center gap-1">
+                              {isSelected && <Check className="w-3 h-3 text-emerald-400" />}
+                              <span>{tier.badge}</span>
                             </div>
+                            {isSelected && (
+                              <div className="absolute top-2 right-2 bg-emerald-500 text-neutral-950 px-2 py-0.5 rounded-full text-[10px] font-extrabold shadow-md flex items-center gap-1">
+                                <Check className="w-3 h-3 stroke-[3]" />
+                                <span>Active</span>
+                              </div>
+                            )}
                             {tier.id === 'shared-coaster' && (
                               <div className="absolute bottom-2 right-2 bg-emerald-500 text-neutral-950 px-2 py-0.5 rounded text-[10px] font-extrabold shadow-md">
                                 Split Fare Supported
@@ -719,7 +789,14 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
 
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <h4 className="text-sm font-bold text-white">{tier.name}</h4>
+                              <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                                <span>{tier.name}</span>
+                                {tier.id === 'standard-sedan' && (
+                                  <span className="text-[10px] px-1.5 py-0.5 bg-neutral-800 text-emerald-300 font-mono rounded">
+                                    Sedan
+                                  </span>
+                                )}
+                              </h4>
                               <p className="text-[11px] text-neutral-400 line-clamp-1">{tier.description}</p>
                             </div>
                           </div>
@@ -1078,12 +1155,17 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Fare Estimate, Dominica Payments & Dispatch (4 Cols) */}
-        <div className="lg:col-span-4 bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-xl space-y-6 sticky top-28">
+        {/* Right Column: Fare Estimate, Dominica Payments & Dispatch (4 Cols) - CSS Selector 2 */}
+        <div className="lg:col-span-4 bg-gradient-to-b from-neutral-900/95 via-neutral-900 to-neutral-950 border border-neutral-800/90 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-6 lg:sticky lg:top-24 ring-1 ring-emerald-500/20 backdrop-blur-sm">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
-              Live Fare &amp; Route Breakdown
-            </span>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block">
+                Live Fare &amp; Route Breakdown
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold">
+                Phase 2 Final
+              </span>
+            </div>
             <div className="flex items-baseline justify-between">
               <span className="text-xs text-neutral-300 font-medium">
                 {isFareReset ? '0 miles · ~0 mins' : `${fareCalc.distanceMiles} miles · ~${fareCalc.estimatedMinutes} mins`}
@@ -1154,65 +1236,126 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
             </div>
           </div>
 
-          {/* Payment Method Selector */}
-          <div>
-            <label className="text-xs font-bold text-white uppercase tracking-wider block mb-2.5">
-              Official Dominica Payment Methods
-            </label>
-            <div className="space-y-2">
-              {PAYMENT_METHODS.map((method) => {
-                const isSelected = booking.paymentMethod === method.id;
-                return (
-                  <label
-                    key={method.id}
-                    onClick={() => handleFieldChange('paymentMethod', method.id)}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                      isSelected
-                        ? 'bg-neutral-800 border-emerald-500 ring-1 ring-emerald-500'
-                        : 'bg-neutral-950 border-neutral-800 hover:border-neutral-700'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="payment_method"
-                      checked={isSelected}
-                      onChange={() => handleFieldChange('paymentMethod', method.id)}
-                      className="mt-0.5 accent-emerald-500 cursor-pointer"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-white">{method.name}</span>
-                        {method.isDominicaPreferred && (
-                          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800">
-                            #1 in Dominica
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-neutral-400 mt-0.5 leading-tight">
-                        {method.description}
-                      </p>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-
-            {/* Quick NBD MoBanking input field if selected */}
-            {booking.paymentMethod === 'nbd_mobanking' && (
-              <div className="mt-3 p-3 bg-neutral-950 rounded-xl border border-neutral-800 text-[11px] text-neutral-300">
-                <span className="font-semibold text-emerald-400 block mb-1">
-                  NBD MoBanking Quick Pay Active
+          {/* Payment Method Selector (Collapsible) - CSS Selector: div:nth-of-type(3) > label:nth-of-type(1) */}
+          <div className="border border-neutral-800 rounded-2xl p-4 bg-neutral-950/60 transition-all duration-300">
+            <label
+              onClick={() => setIsPaymentSectionOpen((prev) => !prev)}
+              className="text-xs font-bold text-white uppercase tracking-wider flex items-center justify-between mb-0 cursor-pointer select-none group py-1 rounded-xl transition-colors hover:text-emerald-300"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setIsPaymentSectionOpen((prev) => !prev);
+                }
+              }}
+            >
+              <span className="flex items-center gap-2">
+                <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Official Dominica Payment Methods</span>
+              </span>
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-400 group-hover:text-emerald-300 normal-case">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800/80">
+                  {selectedPaymentMethod?.name || 'Selected'}
                 </span>
-                <p className="text-neutral-400 text-[10px] mb-2">
-                  Charge directly to your saved NBD MoBanking default or enter your NBD customer ID:
-                </p>
-                <input
-                  type="text"
-                  placeholder="e.g. NBD-XXXX-XXXX"
-                  value={booking.nbdAccountNumber || ''}
-                  onChange={(e) => handleFieldChange('nbdAccountNumber', e.target.value)}
-                  className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-2.5 py-1.5 text-xs text-white uppercase font-mono"
-                />
+                <span>{isPaymentSectionOpen ? 'Collapse' : 'Expand'}</span>
+                {isPaymentSectionOpen ? (
+                  <ChevronUp className="w-4 h-4 text-emerald-400 transition-transform duration-200" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-emerald-400 transition-transform duration-200" />
+                )}
+              </span>
+            </label>
+
+            {/* Collapsed State Preview Card */}
+            {!isPaymentSectionOpen && (
+              <div
+                onClick={() => setIsPaymentSectionOpen(true)}
+                className="mt-3 p-3 bg-neutral-900/80 hover:bg-neutral-900 border border-emerald-500/40 hover:border-emerald-500/80 rounded-xl cursor-pointer transition-all flex items-center justify-between group shadow-sm"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-500/30 shrink-0" />
+                  <div className="truncate">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors">
+                        {selectedPaymentMethod?.name}
+                      </span>
+                      {selectedPaymentMethod?.isDominicaPreferred && (
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/90 px-1.5 py-0.2 rounded border border-emerald-800 shrink-0">
+                          #1 in Dominica
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-neutral-400 truncate mt-0.5">
+                      {selectedPaymentMethod?.description}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[11px] text-emerald-400 font-semibold group-hover:underline shrink-0 ml-2">
+                  Change
+                </span>
+              </div>
+            )}
+
+            {/* Expanded Payment Options */}
+            {isPaymentSectionOpen && (
+              <div className="mt-3 space-y-2">
+                <div className="space-y-2">
+                  {PAYMENT_METHODS.map((method) => {
+                    const isSelected = booking.paymentMethod === method.id;
+                    return (
+                      <label
+                        key={method.id}
+                        onClick={() => handleFieldChange('paymentMethod', method.id)}
+                        className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-neutral-800 border-emerald-500 ring-1 ring-emerald-500'
+                            : 'bg-neutral-950 border-neutral-800 hover:border-neutral-700'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="payment_method"
+                          checked={isSelected}
+                          onChange={() => handleFieldChange('paymentMethod', method.id)}
+                          className="mt-0.5 accent-emerald-500 cursor-pointer"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-white">{method.name}</span>
+                            {method.isDominicaPreferred && (
+                              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800">
+                                #1 in Dominica
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-neutral-400 mt-0.5 leading-tight">
+                            {method.description}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {/* Quick NBD MoBanking input field if selected */}
+                {booking.paymentMethod === 'nbd_mobanking' && (
+                  <div className="mt-3 p-3 bg-neutral-950 rounded-xl border border-neutral-800 text-[11px] text-neutral-300">
+                    <span className="font-semibold text-emerald-400 block mb-1">
+                      NBD MoBanking Quick Pay Active
+                    </span>
+                    <p className="text-neutral-400 text-[10px] mb-2">
+                      Charge directly to your saved NBD MoBanking default or enter your NBD customer ID:
+                    </p>
+                    <input
+                      type="text"
+                      placeholder="e.g. NBD-XXXX-XXXX"
+                      value={booking.nbdAccountNumber || ''}
+                      onChange={(e) => handleFieldChange('nbdAccountNumber', e.target.value)}
+                      className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-2.5 py-1.5 text-xs text-white uppercase font-mono"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

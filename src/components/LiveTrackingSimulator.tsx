@@ -93,7 +93,15 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
   const [currentStatus, setCurrentStatus] = useState<ActiveRide['status']>('dispatched');
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const [graceSecondsLeft, setGraceSecondsLeft] = useState(120);
+
+  // Dynamic Countdown Timer until Driver reaches pickup
+  const initialPickupSeconds = 240; // 4 minutes estimated arrival time
+  const [pickupSecondsRemaining, setPickupSecondsRemaining] = useState(initialPickupSeconds);
+
+  // Real-time Chat & Simulated Messaging State
   const [showChatModal, setShowChatModal] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [isDriverTyping, setIsDriverTyping] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ sender: 'user' | 'driver'; text: string; time: string }>>([
     {
       sender: 'driver',
@@ -104,6 +112,7 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
   const [inputMessage, setInputMessage] = useState('');
   const [sosActivated, setSosActivated] = useState(false);
   const [copiedToast, setCopiedToast] = useState(false);
+  const [copiedCoordsToast, setCopiedCoordsToast] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   // Street View State
@@ -134,22 +143,41 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
     }
   }, [currentStatus]);
 
-  // Status progression simulation & speed fluctuation
+  // Status progression simulation & Dynamic Countdown Timer
   useEffect(() => {
     if (!ride) return;
 
     const timer = setInterval(() => {
-      setSecondsElapsed((prev) => {
-        const next = prev + 1;
-        if (next > 12 && currentStatus === 'dispatched') {
-          setCurrentStatus('arrived_pickup');
-        } else if (next > 24 && currentStatus === 'arrived_pickup') {
-          setCurrentStatus('in_transit');
-        } else if (next > 54 && currentStatus === 'in_transit') {
-          setCurrentStatus('completed');
+      setSecondsElapsed((prev) => prev + 1);
+
+      // Dynamic countdown timer calculates remaining minutes and seconds to pickup
+      setPickupSecondsRemaining((prev) => {
+        if (currentStatus === 'dispatched') {
+          if (prev <= 1) {
+            setCurrentStatus('arrived_pickup');
+            return 0;
+          }
+          return prev - 1;
         }
-        return next;
+        return prev;
       });
+
+      // Progression through subsequent stages
+      if (currentStatus === 'arrived_pickup') {
+        setSecondsElapsed((prev) => {
+          if (prev > 26) {
+            setCurrentStatus('in_transit');
+          }
+          return prev;
+        });
+      } else if (currentStatus === 'in_transit') {
+        setSecondsElapsed((prev) => {
+          if (prev > 54) {
+            setCurrentStatus('completed');
+          }
+          return prev;
+        });
+      }
 
       // Subtle speed fluctuations for realism
       setSpeedFluctuation(Math.floor(Math.sin(Date.now() / 1500) * 4));
@@ -244,26 +272,62 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
   const currentScene = STREET_VIEW_SCENES[selectedSceneIndex];
   const progressPercent = Math.min(100, Math.round((secondsElapsed / 54) * 100));
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMessage.trim()) return;
+  // Dynamic countdown calculations
+  const pickupMinutes = Math.floor(pickupSecondsRemaining / 60);
+  const pickupSeconds = pickupSecondsRemaining % 60;
+  const formattedPickupCountdown = `${pickupMinutes}:${pickupSeconds < 10 ? '0' : ''}${pickupSeconds}`;
+  const estimatedArrivalClock = new Date(Date.now() + pickupSecondsRemaining * 1000).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const pickupProgressPercent = Math.min(100, Math.round(((initialPickupSeconds - pickupSecondsRemaining) / initialPickupSeconds) * 100));
 
-    const userMsg = inputMessage;
+  const handleFastForwardToArrival = () => {
+    setPickupSecondsRemaining(3);
+  };
+
+  const handleSendChatMessage = (textToSend?: string) => {
+    const text = (typeof textToSend === 'string' ? textToSend : inputMessage).trim();
+    if (!text) return;
+
     setChatMessages((prev) => [
       ...prev,
-      { sender: 'user', text: userMsg, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
+      { sender: 'user', text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
     ]);
     setInputMessage('');
 
+    // Trigger driver typing indicator
+    setIsDriverTyping(true);
+
     setTimeout(() => {
+      setIsDriverTyping(false);
+      let reply = 'Understood! Maintaining smooth speed on the Dominica mountain highway.';
+      const lower = text.toLowerCase();
+      if (lower.includes('luggage') || lower.includes('bag')) {
+        reply = `Noted! The ${ride.driver.vehicleModel.split(' ')[0]} has ample luggage space. I will assist you with loading all bags upon arrival.`;
+      } else if (lower.includes('where') || lower.includes('far') || lower.includes('eta') || lower.includes('time') || lower.includes('min')) {
+        const minsLeft = Math.max(1, Math.ceil(pickupSecondsRemaining / 60));
+        reply = `I am currently along the main road corridor. Approximately ${minsLeft} minute${minsLeft > 1 ? 's' : ''} away from ${ride.pickupLabel}.`;
+      } else if (lower.includes('car') || lower.includes('color') || lower.includes('colour') || lower.includes('look')) {
+        reply = `Look out for my ${ride.driver.vehicleModel}, license plate ${ride.driver.licensePlate}. My hazard lights will be flashing at pickup.`;
+      } else if (lower.includes('wait') || lower.includes('outside') || lower.includes('entrance') || lower.includes('lobby')) {
+        reply = 'Excellent, see you right there at the entrance! Approaching now.';
+      } else if (lower.includes('flight') || lower.includes('airport')) {
+        reply = 'Copy that! I will take the scenic coastal bypass to avoid congestion and get you to the terminal on time.';
+      }
+
       setChatMessages((prev) => [
         ...prev,
         {
           sender: 'driver',
-          text: 'Understood! Maintaining smooth speed on the Dominica mountain highway.',
+          text: reply,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
+
+      if (!showChatModal) {
+        setUnreadChatCount((c) => c + 1);
+      }
     }, 1400);
   };
 
@@ -651,8 +715,78 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
 
       {/* Driver & Ride Details Body */}
       <div className="p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Left: Driver Information Card */}
+        {/* Left: Driver Information Card & Dynamic Countdown Timer */}
         <div className="md:col-span-7 space-y-5">
+          {/* DYNAMIC PICKUP COUNTDOWN TIMER CARD */}
+          {currentStatus === 'dispatched' && (
+            <div className="p-5 bg-gradient-to-r from-emerald-950/80 via-neutral-950 to-neutral-900 border border-emerald-500/50 rounded-2xl shadow-xl space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                  </span>
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
+                    Dynamic Pickup Countdown Timer
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-neutral-400">
+                    Est. Arrival: <strong className="text-white">{estimatedArrivalClock}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleFastForwardToArrival}
+                    className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 hover:bg-emerald-900 border border-emerald-700 text-emerald-300 transition-colors cursor-pointer"
+                    title="Simulate rapid driver arrival for testing"
+                  >
+                    ⚡ Fast-Forward (3s)
+                  </button>
+                </div>
+              </div>
+
+              {/* Countdown Numbers Display */}
+              <div className="flex items-baseline justify-between pt-1">
+                <div>
+                  <div className="text-3xl sm:text-4xl font-extrabold text-white font-mono tracking-tight tabular-nums flex items-center gap-2">
+                    <Clock className="w-7 h-7 text-emerald-400 animate-spin-slow" />
+                    <span>{formattedPickupCountdown}</span>
+                    <span className="text-xs font-sans font-normal text-emerald-300">remaining</span>
+                  </div>
+                  <p className="text-xs text-neutral-300 mt-1">
+                    Driver {ride.driver.name} is <span className="text-emerald-400 font-bold">~{Math.max(1, Math.ceil(pickupSecondsRemaining / 60))} minute(s)</span> away from <strong className="text-white">{ride.pickupLabel}</strong>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Dynamic Proximity Progress Bar */}
+              <div className="space-y-1">
+                <div className="w-full bg-neutral-800 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-emerald-400 h-full rounded-full transition-all duration-1000 ease-linear shadow-sm shadow-emerald-400/50"
+                    style={{ width: `${pickupProgressPercent}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] text-neutral-400 font-mono">
+                  <span>Dispatched: Dominica Fleet Base</span>
+                  <span>Pickup Proximity: {pickupProgressPercent}%</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentStatus === 'arrived_pickup' && (
+            <div className="p-4 bg-emerald-950/90 border border-emerald-500 rounded-2xl text-xs text-emerald-200 flex items-center gap-3 animate-pulse shadow-lg">
+              <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
+              <div>
+                <h4 className="font-bold text-white text-sm">Driver Has Arrived at Pickup Point!</h4>
+                <p className="text-xs text-emerald-300 mt-0.5">
+                  {ride.driver.name} has pulled up to <strong>{ride.pickupLabel}</strong> in the {ride.driver.vehicleModel} ({ride.driver.licensePlate}).
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-start gap-4 p-4 bg-neutral-950 rounded-2xl border border-neutral-800">
             <div className="w-14 h-14 rounded-2xl bg-neutral-800 overflow-hidden shrink-0 border border-neutral-700 relative flex items-center justify-center text-white font-bold text-lg">
               <span>{ride.driver.name.split(' ').map((n) => n[0]).join('')}</span>
@@ -903,50 +1037,173 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
         </div>
       )}
 
-      {/* SOS Modal Alert */}
+      {/* ENHANCED SOS EMERGENCY MODAL WITH LOCAL CONTACTS & RIDER COORDINATES */}
       {sosActivated && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="bg-neutral-900 border border-red-700 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center space-y-4">
-            <div className="w-14 h-14 rounded-full bg-red-950 text-red-500 mx-auto flex items-center justify-center">
-              <ShieldAlert className="w-8 h-8" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="bg-neutral-900 border-2 border-red-600/80 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl space-y-5 text-left max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-red-950/80 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-red-950 text-red-500 flex items-center justify-center border border-red-800 shrink-0">
+                  <ShieldAlert className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white">Dominica Emergency SOS</h3>
+                  <span className="text-xs text-red-400 font-mono">Priority Emergency Responder Hub</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSosActivated(false)}
+                className="p-2 text-neutral-400 hover:text-white rounded-xl bg-neutral-800 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <h3 className="text-xl font-bold text-white">Emergency Police Dispatch</h3>
-            <p className="text-xs text-neutral-300 leading-relaxed">
-              GPS coordinates along with driver identification ({ride.driver.name}, plate {ride.driver.licensePlate}) have been flagged for priority transmission to Commonwealth of Dominica Police Force dispatch (999).
-            </p>
-            <div className="flex gap-2">
+
+            {/* Rider's Current Live Coordinates Card */}
+            <div className="p-4 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                  <Navigation className="w-3.5 h-3.5" />
+                  <span>Rider Current GPS Coordinates</span>
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
+                  Live GPS Active
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-1 font-mono">
+                <div className="p-2.5 bg-neutral-900/80 rounded-xl border border-neutral-800">
+                  <span className="text-[10px] text-neutral-400 block">Latitude</span>
+                  <span className="text-white font-bold text-sm">
+                    {ride.driver.currentLat || 15.3014}° N
+                  </span>
+                </div>
+                <div className="p-2.5 bg-neutral-900/80 rounded-xl border border-neutral-800">
+                  <span className="text-[10px] text-neutral-400 block">Longitude</span>
+                  <span className="text-white font-bold text-sm">
+                    {ride.driver.currentLng || -61.3882}° W
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-between text-[11px] text-neutral-400 pt-1">
+                <span>Dominica Corridor: <strong>St. George Parish · Coastal Highway</strong></span>
+                <span>Altitude: <strong>24m ASL</strong></span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(
+                    `EMERGENCY: Dominica Rider GPS coordinates: ${ride.driver.currentLat || 15.3014}° N, ${ride.driver.currentLng || -61.3882}° W. Vehicle: ${ride.driver.vehicleModel}, License Plate: ${ride.driver.licensePlate}. Driver: ${ride.driver.name}. Pickup: ${ride.pickupLabel}, Destination: ${ride.dropoffLabel}.`
+                  );
+                  setCopiedCoordsToast(true);
+                  setTimeout(() => setCopiedCoordsToast(false), 3000);
+                }}
+                className="w-full py-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-200 rounded-xl text-xs font-semibold border border-neutral-700 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              >
+                {copiedCoordsToast ? '✓ Exact GPS Coordinates Copied!' : 'Copy Exact Coordinates to Clipboard'}
+              </button>
+            </div>
+
+            {/* Local Emergency Contact Numbers in Dominica */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-neutral-300 block">
+                Local Dominica Emergency Contact Numbers:
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <a
+                  href="tel:999"
+                  className="p-3 bg-red-950/60 hover:bg-red-950 border border-red-800/80 rounded-xl flex items-center justify-between text-white transition-all group"
+                >
+                  <div>
+                    <span className="font-bold text-red-300 block">Police Emergency Dispatch</span>
+                    <span className="text-[11px] text-neutral-400">Toll-Free Dominica</span>
+                  </div>
+                  <span className="font-mono font-bold text-lg text-white group-hover:text-red-400">999</span>
+                </a>
+
+                <a
+                  href="tel:7674482222"
+                  className="p-3 bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 rounded-xl flex items-center justify-between text-white transition-all"
+                >
+                  <div>
+                    <span className="font-bold text-neutral-200 block">Police HQ (Roseau)</span>
+                    <span className="text-[11px] text-neutral-400">Main Headquarters</span>
+                  </div>
+                  <span className="font-mono font-bold text-xs text-emerald-400">(767) 448-2222</span>
+                </a>
+
+                <a
+                  href="tel:999"
+                  className="p-3 bg-red-950/60 hover:bg-red-950 border border-red-800/80 rounded-xl flex items-center justify-between text-white transition-all group"
+                >
+                  <div>
+                    <span className="font-bold text-red-300 block">Fire &amp; Ambulance</span>
+                    <span className="text-[11px] text-neutral-400">Emergency Rescue</span>
+                  </div>
+                  <span className="font-mono font-bold text-lg text-white group-hover:text-red-400">999</span>
+                </a>
+
+                <a
+                  href="tel:7674485720"
+                  className="p-3 bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 rounded-xl flex items-center justify-between text-white transition-all"
+                >
+                  <div>
+                    <span className="font-bold text-neutral-200 block">Princess Margaret Hospital</span>
+                    <span className="text-[11px] text-neutral-400">Roseau Emergency ER</span>
+                  </div>
+                  <span className="font-mono font-bold text-xs text-emerald-400">(767) 448-5720</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Direct Actions */}
+            <div className="flex gap-3 pt-2 border-t border-neutral-800">
               <a
                 href="tel:999"
-                className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs"
+                className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-900/40"
               >
-                Call 999 Now
+                <Phone className="w-4 h-4" />
+                <span>Call 999 Police Now</span>
               </a>
               <button
                 onClick={() => setSosActivated(false)}
-                className="px-4 py-2.5 bg-neutral-800 text-neutral-300 rounded-xl text-xs"
+                className="px-5 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-xs font-semibold cursor-pointer"
               >
-                Dismiss Test
+                Dismiss
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Live In-App Chat Modal */}
+      {/* REAL-TIME IN-APP CHAT MODAL WITH DRIVER (SIMULATED MESSAGING STATE) */}
       {showChatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-md h-[450px] flex flex-col overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-md h-[500px] flex flex-col overflow-hidden shadow-2xl">
             {/* Header */}
-            <div className="p-4 bg-neutral-950 border-b border-neutral-800 flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-bold text-white">{ride.driver.name}</h4>
-                <span className="text-[11px] text-emerald-400 font-mono">Assigned Driver · {ride.driver.vehicleModel}</span>
+            <div className="p-4 bg-neutral-950 border-b border-neutral-800 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-neutral-800 border border-neutral-700 flex items-center justify-center font-bold text-white text-sm">
+                  {ride.driver.name.split(' ').map((n) => n[0]).join('')}
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>{ride.driver.name}</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  </h4>
+                  <span className="text-[11px] text-emerald-400 font-mono">
+                    {ride.driver.vehicleModel} · {ride.driver.licensePlate}
+                  </span>
+                </div>
               </div>
               <button
                 onClick={() => setShowChatModal(false)}
-                className="p-1 text-neutral-400 hover:text-white rounded-lg"
+                className="p-1.5 text-neutral-400 hover:text-white rounded-lg bg-neutral-800 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -958,10 +1215,10 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
                   className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-xs ${
+                    className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
                       msg.sender === 'user'
                         ? 'bg-emerald-500 text-neutral-950 font-medium'
-                        : 'bg-neutral-800 text-neutral-200'
+                        : 'bg-neutral-800 text-neutral-100 border border-neutral-700'
                     }`}
                   >
                     {msg.text}
@@ -969,10 +1226,48 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
                   <span className="text-[9px] text-neutral-500 mt-0.5 px-1">{msg.time}</span>
                 </div>
               ))}
+
+              {/* Typing indicator */}
+              {isDriverTyping && (
+                <div className="flex items-center gap-2 text-xs text-neutral-400 pl-1">
+                  <div className="flex gap-1 items-center bg-neutral-800 px-3 py-1.5 rounded-full border border-neutral-700">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce" />
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                  </div>
+                  <span className="text-[11px] font-mono text-emerald-400">{ride.driver.name.split(' ')[0]} is typing...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick response chips */}
+            <div className="px-3 py-2 bg-neutral-950/80 border-t border-neutral-800 flex items-center gap-1.5 overflow-x-auto text-[11px] shrink-0">
+              <span className="text-neutral-500 shrink-0 text-[10px]">Quick:</span>
+              {[
+                "I'm outside waiting",
+                'I have 2 large bags',
+                'What colour is your car?',
+                'Take your time!',
+              ].map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => handleSendChatMessage(chip)}
+                  className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-emerald-500/50 text-neutral-300 text-[11px] whitespace-nowrap transition-colors cursor-pointer"
+                >
+                  {chip}
+                </button>
+              ))}
             </div>
 
             {/* Input Bar */}
-            <form onSubmit={handleSendMessage} className="p-3 bg-neutral-950 border-t border-neutral-800 flex gap-2">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendChatMessage();
+              }}
+              className="p-3 bg-neutral-950 border-t border-neutral-800 flex gap-2 shrink-0"
+            >
               <input
                 type="text"
                 placeholder="Message your driver..."
@@ -982,7 +1277,7 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
               />
               <button
                 type="submit"
-                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 rounded-xl text-xs font-bold"
+                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 rounded-xl text-xs font-bold cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>
@@ -990,6 +1285,42 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
           </div>
         </div>
       )}
+
+      {/* FLOATING ACTION CONTROLS */}
+      {/* 1. Floating 'SOS' Emergency Button */}
+      <button
+        type="button"
+        onClick={() => setSosActivated(true)}
+        className="fixed bottom-6 right-6 z-40 sm:bottom-8 sm:right-8 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-2xl shadow-2xl shadow-red-950/80 flex items-center gap-2.5 border-2 border-red-400 font-bold text-xs uppercase tracking-wider transition-all hover:scale-105 active:scale-95 cursor-pointer animate-pulse"
+        title="24/7 Emergency SOS Police & Ambulance Dispatch"
+      >
+        <ShieldAlert className="w-5 h-5 text-white" />
+        <span>SOS 999</span>
+      </button>
+
+      {/* 2. Floating Real-time Chat Launcher */}
+      <button
+        type="button"
+        onClick={() => {
+          setShowChatModal(true);
+          setUnreadChatCount(0);
+        }}
+        className="fixed bottom-6 right-36 z-40 sm:bottom-8 sm:right-40 px-3.5 py-3 bg-neutral-900/95 hover:bg-neutral-800 text-white rounded-2xl shadow-2xl border border-emerald-500/50 flex items-center gap-2 font-bold text-xs transition-all hover:scale-105 active:scale-95 cursor-pointer backdrop-blur-md"
+        title="Chat live with driver"
+      >
+        <div className="relative">
+          <MessageSquare className="w-4 h-4 text-emerald-400" />
+          {unreadChatCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+          )}
+        </div>
+        <span className="hidden sm:inline">Chat Driver</span>
+        {unreadChatCount > 0 && (
+          <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-neutral-950 text-[10px] font-bold">
+            {unreadChatCount}
+          </span>
+        )}
+      </button>
     </div>
   );
 };

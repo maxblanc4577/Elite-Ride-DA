@@ -12,7 +12,21 @@ import {
   Filter,
   Gauge,
   UserPlus,
+  BarChart2,
+  Activity,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  CartesianGrid,
+} from 'recharts';
 import { VEHICLE_TIERS } from '../data/dominicaData';
 import { Currency } from '../types/booking';
 import { formatFare } from '../utils/pricing';
@@ -28,6 +42,7 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({ currency }) => {
   const [incomingRequest, setIncomingRequest] = useState<any | null>(null);
   const [acceptTimer, setAcceptTimer] = useState(15);
   const [selectedDayFilter, setSelectedDayFilter] = useState<string>('all');
+  const [chartViewMode, setChartViewMode] = useState<'daily' | 'weekly_trend'>('daily');
 
   const [acceptedTrips, setAcceptedTrips] = useState<any[]>([
     {
@@ -310,6 +325,64 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({ currency }) => {
     };
   });
   const maxDayTotal = Math.max(...dailyBreakdown.map((d) => d.total), 1);
+
+  // Recharts Chronological Data (Past 7 Days from oldest to newest)
+  const rechartsDailyData = [...dailyBreakdown]
+    .reverse()
+    .map((item) => {
+      const faresVal = currency === 'USD' ? +(item.fares / 2.7).toFixed(1) : item.fares;
+      const tipsVal = currency === 'USD' ? +(item.tips / 2.7).toFixed(1) : item.tips;
+      const totalVal = currency === 'USD' ? +(item.total / 2.7).toFixed(1) : item.total;
+      return {
+        name: item.day.split(' ')[0],
+        fullDay: item.day,
+        fares: faresVal,
+        tips: tipsVal,
+        total: totalVal,
+        trips: item.tripsCount,
+      };
+    });
+
+  const CustomChartTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-neutral-900 border border-neutral-700 p-3 rounded-xl shadow-2xl text-xs space-y-1.5 min-w-[190px]">
+          <div className="font-bold text-white flex items-center justify-between pb-1 border-b border-neutral-800">
+            <span>{data.fullDay || label}</span>
+            <span className="text-[10px] text-emerald-400 font-mono font-bold bg-neutral-950 px-1.5 py-0.5 rounded border border-neutral-800">
+              {data.trips} dispatches
+            </span>
+          </div>
+          <div className="flex justify-between text-neutral-300">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>Fares:</span>
+            </span>
+            <span className="font-mono text-white">
+              {currency === 'USD' ? `$${Number(data.fares).toFixed(2)}` : `EC$${Number(data.fares).toFixed(2)}`}
+            </span>
+          </div>
+          <div className="flex justify-between text-amber-300">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span>100% Tips:</span>
+            </span>
+            <span className="font-mono">
+              {currency === 'USD' ? `$${Number(data.tips).toFixed(2)}` : `EC$${Number(data.tips).toFixed(2)}`}
+            </span>
+          </div>
+          <div className="pt-1 border-t border-neutral-800 flex justify-between font-bold text-emerald-300 text-xs">
+            <span>Total Day Revenue:</span>
+            <span className="font-mono">
+              {currency === 'USD' ? `$${Number(data.total).toFixed(2)}` : `EC$${Number(data.total).toFixed(2)}`}
+            </span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   const filteredWeeklyRides = selectedDayFilter === 'all'
     ? weeklyRides
@@ -641,42 +714,133 @@ export const DriverPortal: React.FC<DriverPortalProps> = ({ currency }) => {
               </div>
             </div>
 
-            {/* 7-Day Visual Daily Performance Chart */}
-            <div className="p-4 sm:p-5 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-white">Daily Earnings Distribution (Last 7 Days)</span>
-                <span className="text-neutral-400 text-[11px]">Tap day to filter metadata</span>
+            {/* 7-Day Visual Performance Chart powered by Recharts */}
+            <div className="p-4 sm:p-5 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div>
+                  <h4 className="font-bold text-white flex items-center gap-2">
+                    <BarChart2 className="w-4 h-4 text-emerald-400" />
+                    <span>Visual Revenue Analytics (Powered by Recharts)</span>
+                  </h4>
+                  <p className="text-[11px] text-neutral-400 mt-0.5">
+                    Interactive daily &amp; weekly revenue tracking for Jean-Pierre Bruno
+                  </p>
+                </div>
+
+                {/* Switch between Daily Bar Chart and Weekly Area Trend */}
+                <div className="flex items-center p-1 bg-neutral-900 border border-neutral-800 rounded-xl text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setChartViewMode('daily')}
+                    className={`px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      chartViewMode === 'daily'
+                        ? 'bg-emerald-500 text-neutral-950 font-bold shadow-sm'
+                        : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    <BarChart2 className="w-3.5 h-3.5" />
+                    <span>Daily Revenue (Bar)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChartViewMode('weekly_trend')}
+                    className={`px-3 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                      chartViewMode === 'weekly_trend'
+                        ? 'bg-emerald-500 text-neutral-950 font-bold shadow-sm'
+                        : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>Weekly Trend (Area)</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-7 gap-2 pt-2 items-end h-28">
-                {dailyBreakdown.map((item, idx) => {
-                  const heightPercent = Math.max(18, Math.round((item.total / maxDayTotal) * 100));
-                  const isSelected = selectedDayFilter === item.day;
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setSelectedDayFilter(selectedDayFilter === item.day ? 'all' : item.day)}
-                      className={`h-full flex flex-col justify-end items-center gap-1.5 p-1 rounded-xl transition-all cursor-pointer ${
-                        isSelected ? 'bg-neutral-800/80 ring-1 ring-emerald-500' : 'hover:bg-neutral-900/60'
-                      }`}
+              {/* Recharts Chart Canvas */}
+              <div className="w-full h-64 pt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  {chartViewMode === 'daily' ? (
+                    <BarChart
+                      data={rechartsDailyData}
+                      margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+                      onClick={(state: any) => {
+                        if (state && state.activePayload && state.activePayload.length) {
+                          const clickedDay = state.activePayload[0].payload.fullDay;
+                          setSelectedDayFilter(selectedDayFilter === clickedDay ? 'all' : clickedDay);
+                        }
+                      }}
                     >
-                      <span className="text-[10px] font-mono font-bold text-neutral-300">
-                        {currency === 'USD' ? `$${(item.total / 2.7).toFixed(0)}` : `EC$${item.total.toFixed(0)}`}
-                      </span>
-                      <div className="w-full bg-neutral-800 rounded-t-lg overflow-hidden flex flex-col justify-end" style={{ height: `${heightPercent}%` }}>
-                        <div
-                          className="w-full bg-emerald-400 transition-all rounded-t-lg"
-                          style={{ height: '100%' }}
-                          title={`${item.day}: Fares ${formatFare(item.fares, currency)}, Tips ${formatFare(item.tips, currency)}`}
-                        />
-                      </div>
-                      <span className="text-[10px] text-neutral-400 font-medium truncate w-full text-center">
-                        {item.day.split(' ')[0]}
-                      </span>
-                    </button>
-                  );
-                })}
+                      <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        stroke="#737373"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={{ stroke: '#404040' }}
+                      />
+                      <YAxis
+                        stroke="#737373"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={{ stroke: '#404040' }}
+                        tickFormatter={(v) => (currency === 'USD' ? `$${v}` : `EC$${v}`)}
+                      />
+                      <Tooltip content={<CustomChartTooltip />} />
+                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                      <Bar
+                        dataKey="fares"
+                        name="Trip Fares (EC$ / USD)"
+                        fill="#10b981"
+                        radius={[4, 4, 0, 0]}
+                        cursor="pointer"
+                      />
+                      <Bar
+                        dataKey="tips"
+                        name="100% Retained Tips"
+                        fill="#f59e0b"
+                        radius={[4, 4, 0, 0]}
+                        cursor="pointer"
+                      />
+                    </BarChart>
+                  ) : (
+                    <AreaChart
+                      data={rechartsDailyData}
+                      margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        stroke="#737373"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={{ stroke: '#404040' }}
+                      />
+                      <YAxis
+                        stroke="#737373"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={{ stroke: '#404040' }}
+                        tickFormatter={(v) => (currency === 'USD' ? `$${v}` : `EC$${v}`)}
+                      />
+                      <Tooltip content={<CustomChartTooltip />} />
+                      <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                      <Area
+                        type="monotone"
+                        dataKey="total"
+                        name="Total Daily Revenue"
+                        stroke="#34d399"
+                        strokeWidth={2.5}
+                        fill="url(#colorTotal)"
+                      />
+                    </AreaChart>
+                  )}
+                </ResponsiveContainer>
               </div>
 
               {/* Day filter pills */}
