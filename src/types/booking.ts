@@ -12,6 +12,7 @@ export interface RiderProfile {
   homeLocationId: string;
   preferredPayment: 'nbd_mobanking' | 'mpay' | 'card_xcd' | 'cash';
   nbdAccountNumber?: string;
+  flightNumber?: string;
   tripsCount: number;
 }
 

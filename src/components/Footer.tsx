@@ -5,9 +5,11 @@ import { EliteRideLogo } from './EliteRideLogo';
 
 interface FooterProps {
   onNavigate: (view: AppView) => void;
+  onOpenLogoDesign?: () => void;
+  onReplaySplash?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenLogoDesign, onReplaySplash }) => {
   return (
     <footer className="bg-neutral-950 border-t border-neutral-800 text-neutral-400 py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -19,7 +21,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               size="md"
               theme="dark"
               showTagline={true}
-              onClick={() => onNavigate('book')}
+              onClick={onOpenLogoDesign || (() => onNavigate('home'))}
               className="cursor-pointer"
             />
             <p className="text-xs text-neutral-400 leading-relaxed">
@@ -124,6 +126,28 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             >
               Terms of Use
             </button>
+            {onOpenLogoDesign && (
+              <>
+                <span>·</span>
+                <button
+                  onClick={onOpenLogoDesign}
+                  className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors cursor-pointer"
+                >
+                  Logo Design System
+                </button>
+              </>
+            )}
+            {onReplaySplash && (
+              <>
+                <span>·</span>
+                <button
+                  onClick={onReplaySplash}
+                  className="text-sky-400 hover:text-sky-300 transition-colors cursor-pointer"
+                >
+                  Replay App Intro
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

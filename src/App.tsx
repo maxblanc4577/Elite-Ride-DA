@@ -14,6 +14,8 @@ import { RiderAuthModal } from './components/RiderAuthModal';
 import { DriverSignUpModal } from './components/DriverSignUpModal';
 import { PoliciesSection } from './components/PoliciesSection';
 import { Footer } from './components/Footer';
+import { AppOpeningLogoScreen } from './components/AppOpeningLogoScreen';
+import { LogoDesignViewerModal } from './components/LogoDesignViewerModal';
 import { AppView, Currency, ActiveRide, RiderProfile, ActiveDriver, RideHistoryItem } from './types/booking';
 import { VEHICLE_TIERS, DOMINICA_LOCATIONS } from './data/dominicaData';
 import { ArrowRight, ShieldCheck, MapPin, Car, Radio, Smartphone, ChevronRight, ChevronDown, ChevronUp, Award, Compass, Sparkles } from 'lucide-react';
@@ -22,8 +24,11 @@ export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [currency, setCurrency] = useState<Currency>('XCD');
   const [activeRide, setActiveRide] = useState<ActiveRide | null>(null);
-  const [isFleetCollapsed, setIsFleetCollapsed] = useState(true);
   const [selectedTierId, setSelectedTierId] = useState<string>('standard-sedan');
+
+  // App Opening Logo Screen (Opens the app showcasing the official logo design)
+  const [showOpeningLogo, setShowOpeningLogo] = useState<boolean>(true);
+  const [isLogoDesignModalOpen, setIsLogoDesignModalOpen] = useState<boolean>(false);
 
   // Rider authentication profile state
   const [currentRider, setCurrentRider] = useState<RiderProfile | null>(() => {
@@ -174,6 +179,8 @@ export default function App() {
         onOpenRiderAuth={() => setIsRiderAuthOpen(true)}
         currentDriver={currentDriver}
         onOpenDriverSignUp={() => setIsDriverSignUpOpen(true)}
+        onOpenLogoDesign={() => setIsLogoDesignModalOpen(true)}
+        onReplaySplash={() => setShowOpeningLogo(true)}
       />
 
       <main className="flex-1 pb-16">
@@ -199,163 +206,9 @@ export default function App() {
                 setCurrentView('admin_portal');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
+              onOpenLogoDesign={() => setIsLogoDesignModalOpen(true)}
+              onReplaySplash={() => setShowOpeningLogo(true)}
             />
-
-            {/* Dominica Fleet Showcase with Quick Book Launchers - CSS Selector 1: section:nth-of-type(2) */}
-            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-              <div className="bg-neutral-900/90 border border-neutral-800 rounded-3xl p-6 sm:p-7 shadow-xl">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                      <span className="text-xs uppercase font-bold tracking-widest text-emerald-400">
-                        Phase 1 Overview · Dominica Fleet
-                      </span>
-                      {isFleetCollapsed && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-400 border border-neutral-700">
-                          Collapsed
-                        </span>
-                      )}
-                    </div>
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-white mt-1">
-                      Select Your Vehicle &amp; Enter Booking Phase
-                    </h2>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      Standard Sedan, Mountain SUV 4WD, Shared Coaster, and Airport VIP Transfer.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setIsFleetCollapsed(!isFleetCollapsed)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white font-semibold text-xs rounded-xl border border-neutral-700 transition-colors cursor-pointer"
-                      aria-label={isFleetCollapsed ? 'Expand Fleet Cards' : 'Collapse Fleet Cards'}
-                    >
-                      {isFleetCollapsed ? (
-                        <>
-                          <ChevronDown className="w-4 h-4 text-emerald-400" />
-                          <span>Expand Fleet (4 Tiers)</span>
-                        </>
-                      ) : (
-                        <>
-                          <ChevronUp className="w-4 h-4 text-neutral-400" />
-                          <span>Collapse</span>
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setCurrentView('book');
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-neutral-950 font-bold text-xs rounded-xl shadow-lg transition-transform active:scale-95 cursor-pointer"
-                    >
-                      <span>Proceed to Phase 2 (Book Now)</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Collapsed Compact Preview Bar */}
-                {isFleetCollapsed && (
-                  <div className="mt-4 pt-4 border-t border-neutral-800 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-400">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-neutral-500 font-mono text-[11px]">Available Tiers:</span>
-                      {VEHICLE_TIERS.map((tier) => (
-                        <button
-                          key={tier.id}
-                          onClick={() => {
-                            setSelectedTierId(tier.id);
-                            setCurrentView('book');
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                          className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors cursor-pointer ${
-                            selectedTierId === tier.id
-                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
-                              : 'bg-neutral-800/80 hover:bg-emerald-500/20 hover:text-emerald-300 border-neutral-700 text-neutral-300'
-                          }`}
-                        >
-                          {tier.name} · {currency === 'USD' ? `$${(tier.ratePerMileXCD / 2.7).toFixed(0)}/mi` : `EC$${tier.ratePerMileXCD}/mi`}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setIsFleetCollapsed(false)}
-                      className="text-emerald-400 hover:underline text-xs flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>Show detailed specs</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* 4 Fleet Tiers Cards (Visible when expanded) */}
-              {!isFleetCollapsed && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-2 transition-all duration-300">
-                  {VEHICLE_TIERS.map((tier) => (
-                    <div
-                      key={tier.id}
-                      className={`bg-neutral-900/90 border rounded-3xl p-6 flex flex-col justify-between transition-all group shadow-xl ${
-                        selectedTierId === tier.id
-                          ? 'border-emerald-500 ring-2 ring-emerald-500/30 shadow-emerald-950/40'
-                          : 'border-neutral-800 hover:border-emerald-500/50 hover:shadow-emerald-950/20'
-                      }`}
-                    >
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/70 border border-emerald-800/80 px-2.5 py-1 rounded-full">
-                            {tier.capacityPassengers} Seats · {tier.capacityLuggage} Bags
-                          </span>
-                          <span className="text-xs text-neutral-400 font-mono">
-                            {currency === 'USD' ? `$${(tier.ratePerMileXCD / 2.7).toFixed(2)}/mi` : `EC$${tier.ratePerMileXCD}/mi`}
-                          </span>
-                        </div>
-
-                        <div>
-                          <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">
-                            {tier.name}
-                          </h3>
-                          <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-                            {tier.description}
-                          </p>
-                        </div>
-
-                        <div className="pt-2 border-t border-neutral-800 text-[11px] text-neutral-400 space-y-1">
-                          <div className="flex items-center gap-1.5 text-neutral-300">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span>Air Conditioned · 4WD Mountain Ready</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-neutral-300">
-                            <Smartphone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span>NBD MoBanking &amp; mPay Accepted</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-5 mt-5 border-t border-neutral-800">
-                        <button
-                          onClick={() => {
-                            setSelectedTierId(tier.id);
-                            setCurrentView('book');
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                          className={`w-full py-2.5 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                            selectedTierId === tier.id
-                              ? 'bg-emerald-500 text-neutral-950 shadow-md'
-                              : 'bg-neutral-800 hover:bg-emerald-500 hover:text-neutral-950 text-white'
-                          }`}
-                        >
-                          <span>{selectedTierId === tier.id ? 'Selected (Book This Tier)' : 'Book This Tier'}</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
 
             {/* Dominica Island Transit Highlights */}
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -401,7 +254,6 @@ export default function App() {
 
         {/* =========================================================================
             PHASE 2: DEDICATED RIDE BOOKING TERMINAL
-            Moved from main page into the dedicated second phase of "Book a Ride Now"
             ========================================================================= */}
         {currentView === 'book' && (
           <div className="space-y-8 py-8">
@@ -442,6 +294,8 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+
 
             {/* Core Ride Booking Form (CSS Selector Elements 1 & 2 Inside) */}
             <section id="booking-section" className="px-4 sm:px-6 lg:px-8">
@@ -494,10 +348,14 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <Footer onNavigate={(view) => {
-        setCurrentView(view);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }} />
+      <Footer
+        onNavigate={(view) => {
+          setCurrentView(view);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onOpenLogoDesign={() => setIsLogoDesignModalOpen(true)}
+        onReplaySplash={() => setShowOpeningLogo(true)}
+      />
 
       {/* Rider Sign Up & Profile Modal */}
       <RiderAuthModal
@@ -519,6 +377,21 @@ export default function App() {
         }}
         currentDriver={currentDriver}
         onDriverSignOut={handleDriverSignOut}
+      />
+
+      {/* App Launch Opening Logo Screen (Opens the app showcasing the official logo design) */}
+      {showOpeningLogo && (
+        <AppOpeningLogoScreen
+          onEnterApp={() => setShowOpeningLogo(false)}
+          autoCloseDelayMs={2800}
+        />
+      )}
+
+      {/* Interactive Logo Design Viewer Modal */}
+      <LogoDesignViewerModal
+        isOpen={isLogoDesignModalOpen}
+        onClose={() => setIsLogoDesignModalOpen(false)}
+        onReplaySplash={() => setShowOpeningLogo(true)}
       />
     </div>
   );

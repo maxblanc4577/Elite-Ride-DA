@@ -13,6 +13,8 @@ interface NavbarProps {
   onOpenRiderAuth: () => void;
   currentDriver?: ActiveDriver | null;
   onOpenDriverSignUp?: () => void;
+  onOpenLogoDesign?: () => void;
+  onReplaySplash?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -25,6 +27,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenRiderAuth,
   currentDriver,
   onOpenDriverSignUp,
+  onOpenLogoDesign,
+  onReplaySplash,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -32,18 +36,31 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="sticky top-0 z-50 bg-neutral-950/90 backdrop-blur-md border-b border-neutral-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
         {/* Zone 1: Official Elite Ride Logo */}
-        <button
-          onClick={() => onNavigate('home')}
-          className="shrink-0 flex items-center text-left cursor-pointer group focus:outline-none"
-          aria-label="Elite Ride Dominica Home"
-        >
-          <EliteRideLogo
-            variant="horizontal"
-            size="sm"
-            theme="dark"
-            className="hover:opacity-95 transition-opacity"
-          />
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => onNavigate('home')}
+            className="shrink-0 flex items-center text-left cursor-pointer group focus:outline-none"
+            aria-label="Elite Ride Dominica Home"
+          >
+            <EliteRideLogo
+              variant="horizontal"
+              size="sm"
+              theme="dark"
+              className="hover:opacity-95 transition-opacity"
+            />
+          </button>
+
+          {onOpenLogoDesign && (
+            <button
+              onClick={onOpenLogoDesign}
+              title="View Elite Ride Logo Design System"
+              className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-md bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Logo Design</span>
+            </button>
+          )}
+        </div>
 
         {/* Zone 2: Navigation Links (Single-line, no wraps) */}
         <nav className="hidden lg:flex items-center gap-5 text-xs sm:text-sm font-medium text-neutral-300">
@@ -268,6 +285,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             Safety, Terms & 15% Cancellation Fee
           </button>
+          {onOpenLogoDesign && (
+            <button
+              onClick={() => {
+                onOpenLogoDesign();
+                setMobileMenuOpen(false);
+              }}
+              className="block w-full text-left text-sm font-semibold text-emerald-400 hover:text-emerald-300 py-1"
+            >
+              Elite Ride Logo Design & Branding
+            </button>
+          )}
 
           <div className="pt-3 border-t border-neutral-800 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">

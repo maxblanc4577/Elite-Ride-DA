@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, ShieldCheck, Radio, Smartphone } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Radio, Smartphone, Sparkles, Layers } from 'lucide-react';
 import { EliteRideLogo } from './EliteRideLogo';
 
 interface HeroSectionProps {
@@ -8,6 +8,8 @@ interface HeroSectionProps {
   onOpenRiderSignUp?: () => void;
   onOpenAdminPortal?: () => void;
   onOpenDriverSignUp?: () => void;
+  onOpenLogoDesign?: () => void;
+  onReplaySplash?: () => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
@@ -16,31 +18,49 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onOpenRiderSignUp,
   onOpenAdminPortal,
   onOpenDriverSignUp,
+  onOpenLogoDesign,
+  onReplaySplash,
 }) => {
   return (
-    <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden bg-neutral-950">
-      {/* Background Visual Asset */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src="/src/assets/images/hero_dominica_luxury_suv_1791810331228.jpg"
-          alt="Elite Ride Dominica executive 4WD SUV on coastal mountain road"
-          className="w-full h-full object-cover object-center scale-105"
-          referrerPolicy="no-referrer"
-        />
-        {/* Measured Scrim for Legibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/75 to-neutral-950/40" />
-      </div>
-
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        {/* Official Brand Identity Presentation */}
-        <div className="flex justify-center mb-6">
-          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-neutral-950/80 border border-neutral-800 backdrop-blur-md shadow-2xl">
-            <EliteRideLogo
-              variant="horizontal"
-              size="sm"
-              theme="dark"
-              showTagline={false}
-            />
+    <section className="relative min-h-[50vh] flex items-center justify-center overflow-hidden bg-neutral-950 py-10 sm:py-16">
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        {/* Prominent Official Logo Design Showcase */}
+        <div className="flex flex-col items-center justify-center mb-8">
+          <div className="relative group p-6 sm:p-8 rounded-3xl bg-gradient-to-b from-neutral-900/90 via-neutral-900/70 to-neutral-950 border border-neutral-800 shadow-2xl backdrop-blur-md max-w-md w-full">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-sky-500/20 via-emerald-500/20 to-sky-500/20 rounded-3xl blur-sm opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <div className="relative flex flex-col items-center">
+              <EliteRideLogo
+                variant="full"
+                size="lg"
+                theme="dark"
+                showTagline={true}
+                className="transform transition-transform duration-300 group-hover:scale-105"
+              />
+              
+              <div className="mt-4 flex items-center justify-center gap-2 pt-3 border-t border-neutral-800/80 w-full text-[11px] text-neutral-400">
+                {onOpenLogoDesign && (
+                  <button
+                    onClick={onOpenLogoDesign}
+                    className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors font-medium cursor-pointer"
+                  >
+                    <Layers className="w-3 h-3" />
+                    <span>Logo Design Specs</span>
+                  </button>
+                )}
+                {onReplaySplash && (
+                  <>
+                    <span className="text-neutral-600">·</span>
+                    <button
+                      onClick={onReplaySplash}
+                      className="inline-flex items-center gap-1 text-sky-400 hover:text-sky-300 transition-colors font-medium cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>Replay Opening Intro</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
