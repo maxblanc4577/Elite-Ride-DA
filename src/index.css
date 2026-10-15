@@ -40,3 +40,79 @@ div#root:nth-of-type(1) > div:nth-of-type(1) > footer:nth-of-type(1) > div:nth-o
     stroke-opacity: 1;
   }
 }
+
+/* Accessibility Mode: Increases text size, enhances focus rings, boosts color contrast across components */
+.accessibility-mode {
+  font-size: 108%;
+}
+
+.accessibility-mode button,
+.accessibility-mode input,
+.accessibility-mode select,
+.accessibility-mode textarea,
+.accessibility-mode a {
+  outline: 3px solid #10b981 !important;
+  outline-offset: 2px !important;
+}
+
+.accessibility-mode .text-neutral-400,
+.accessibility-mode .text-neutral-500 {
+  color: #e2e8f0 !important;
+}
+
+.accessibility-mode .text-neutral-300 {
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+.accessibility-mode .border-neutral-800,
+.accessibility-mode .border-neutral-700 {
+  border-color: #64748b !important;
+}
+
+/* Day Mode: High-contrast light theme */
+.day-mode {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+.day-mode header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #cbd5e1 !important;
+}
+
+.day-mode .bg-neutral-950 {
+  background-color: #f1f5f9 !important;
+}
+
+.day-mode .bg-neutral-900 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.day-mode .border-neutral-800,
+.day-mode .border-neutral-700 {
+  border-color: #cbd5e1 !important;
+}
+
+.day-mode .text-white {
+  color: #0f172a !important;
+}
+
+.day-mode .text-neutral-400 {
+  color: #475569 !important;
+}
+
+.day-mode .text-neutral-300 {
+  color: #334155 !important;
+}
+
+.day-mode input,
+.day-mode select,
+.day-mode textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
+

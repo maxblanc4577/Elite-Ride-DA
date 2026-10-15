@@ -26,11 +26,16 @@ import {
   Check,
   Split,
   Map as MapIcon,
+  Star,
+  Bell,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
-import { ActiveRide, Currency } from '../types/booking';
+import { ActiveRide, Currency, RiderProfile } from '../types/booking';
 import { formatFare } from '../utils/pricing';
 import { DOMINICA_LOCATIONS, VEHICLE_TIERS } from '../data/dominicaData';
 import { EliteRideLogo } from './EliteRideLogo';
+import { Messaging } from './Messaging';
 
 interface LiveTrackingSimulatorProps {
   ride: ActiveRide | null;
@@ -38,6 +43,7 @@ interface LiveTrackingSimulatorProps {
   onCancelRide: () => void;
   onResetRide: () => void;
   onStartDemoRide?: (ride: ActiveRide) => void;
+  currentRider?: RiderProfile | null;
 }
 
 // Dominica authentic Street View scenes
@@ -89,6 +95,7 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
   onCancelRide,
   onResetRide,
   onStartDemoRide,
+  currentRider,
 }) => {
   const [currentStatus, setCurrentStatus] = useState<ActiveRide['status']>('dispatched');
   const [secondsElapsed, setSecondsElapsed] = useState(0);
@@ -114,6 +121,28 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
   const [copiedToast, setCopiedToast] = useState(false);
   const [copiedCoordsToast, setCopiedCoordsToast] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+
+  // Driver Request Acceptance State
+  const [driverAccepted, setDriverAccepted] = useState(false);
+  const [driverAcceptanceToast, setDriverAcceptanceToast] = useState(true);
+
+  // 2-minute proximity push notification state
+  const [pushAlert2MinDismissed, setPushAlert2MinDismissed] = useState(false);
+
+  // Trip completion rating & review state
+  const [userRating, setUserRating] = useState(5);
+  const [userReview, setUserReview] = useState('');
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  // Auto-simulate driver accepting the request within 2.5s
+  useEffect(() => {
+    if (!ride) return;
+    const t = setTimeout(() => {
+      setDriverAccepted(true);
+      setTimeout(() => setDriverAcceptanceToast(false), 6000);
+    }, 2200);
+    return () => clearTimeout(t);
+  }, [ride]);
 
   // Street View State
   const [viewMode, setViewMode] = useState<'street_view' | 'radar' | 'split'>('street_view');
@@ -148,36 +177,27 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
     if (!ride) return;
 
     const timer = setInterval(() => {
-      setSecondsElapsed((prev) => prev + 1);
+      setSecondsElapsed((prev) => {
+        const next = prev + 1;
+        if (currentStatus === 'arrived_pickup' && next > 26) {
+          setTimeout(() => setCurrentStatus('in_transit'), 0);
+        } else if (currentStatus === 'in_transit' && next > 54) {
+          setTimeout(() => setCurrentStatus('completed'), 0);
+        }
+        return next;
+      });
 
       // Dynamic countdown timer calculates remaining minutes and seconds to pickup
       setPickupSecondsRemaining((prev) => {
         if (currentStatus === 'dispatched') {
           if (prev <= 1) {
-            setCurrentStatus('arrived_pickup');
+            setTimeout(() => setCurrentStatus('arrived_pickup'), 0);
             return 0;
           }
           return prev - 1;
         }
         return prev;
       });
-
-      // Progression through subsequent stages
-      if (currentStatus === 'arrived_pickup') {
-        setSecondsElapsed((prev) => {
-          if (prev > 26) {
-            setCurrentStatus('in_transit');
-          }
-          return prev;
-        });
-      } else if (currentStatus === 'in_transit') {
-        setSecondsElapsed((prev) => {
-          if (prev > 54) {
-            setCurrentStatus('completed');
-          }
-          return prev;
-        });
-      }
 
       // Subtle speed fluctuations for realism
       setSpeedFluctuation(Math.floor(Math.sin(Date.now() / 1500) * 4));
@@ -286,7 +306,7 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
     setPickupSecondsRemaining(3);
   };
 
-  const handleSendChatMessage = (textToSend?: string) => {
+  const handleSendChatMessage = async (textToSend?: string) => {
     const text = (typeof textToSend === 'string' ? textToSend : inputMessage).trim();
     if (!text) return;
 
@@ -298,6 +318,37 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
 
     // Trigger driver typing indicator
     setIsDriverTyping(true);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Rider message: "${text}". Context: Chauffeur ${ride.driver.name} in Dominica driving ${ride.driver.vehicleModel} (${ride.driver.licensePlate}) from ${ride.pickupLabel} to ${ride.dropoffLabel}. Reply in 1-2 friendly, polite professional sentences.`,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.reply) {
+          setIsDriverTyping(false);
+          setChatMessages((prev) => [
+            ...prev,
+            {
+              sender: 'driver',
+              text: data.reply,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+          if (!showChatModal) {
+            setUnreadChatCount((c) => c + 1);
+          }
+          return;
+        }
+      }
+    } catch {
+      // Graceful fallback to local simulated response
+    }
 
     setTimeout(() => {
       setIsDriverTyping(false);
@@ -328,7 +379,7 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
       if (!showChatModal) {
         setUnreadChatCount((c) => c + 1);
       }
-    }, 1400);
+    }, 1200);
   };
 
   const handleCopyShare = () => {
@@ -397,6 +448,66 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
         </div>
       )}
 
+      {/* Driver Acceptance Notice Banner */}
+      {!driverAccepted && (
+        <div className="bg-indigo-950/90 border-b border-indigo-700/60 px-4 py-2.5 flex items-center justify-between text-xs text-indigo-200 animate-pulse">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
+            <span>
+              Ride Request Sent: <strong>{ride.driver.name}</strong> ({ride.driver.vehicleModel}) is reviewing and accepting your dispatch...
+            </span>
+          </div>
+          <button
+            onClick={() => setDriverAccepted(true)}
+            className="px-2.5 py-0.5 bg-indigo-500 hover:bg-indigo-400 text-neutral-950 font-bold rounded text-[10px] cursor-pointer"
+          >
+            Simulate Instant Accept
+          </button>
+        </div>
+      )}
+
+      {driverAccepted && driverAcceptanceToast && (
+        <div className="bg-emerald-950/90 border-b border-emerald-600/70 px-4 py-2 flex items-center justify-between text-xs text-emerald-200">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>
+              Request Accepted by <strong>{ride.driver.name}</strong>! Chauffeur is now en route to {ride.pickupLabel}.
+            </span>
+          </div>
+          <button
+            onClick={() => setDriverAcceptanceToast(false)}
+            className="text-[10px] text-emerald-400 hover:text-white cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* 2-Minute Pickup Proximity Push Notification Alert */}
+      {pickupSecondsRemaining <= 120 && pickupSecondsRemaining > 0 && !pushAlert2MinDismissed && currentStatus === 'dispatched' && (
+        <div className="bg-gradient-to-r from-amber-950/95 via-neutral-900 to-amber-950/95 border-b border-amber-500/80 px-4 py-3 flex items-center justify-between text-xs text-amber-200 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4 animate-spin" />
+            </div>
+            <div>
+              <span className="font-bold text-white text-xs block flex items-center gap-1.5">
+                <span>🔔 Proximity Alert: Driver is within 2 minutes of your pickup!</span>
+              </span>
+              <p className="text-[11px] text-amber-300 mt-0.5">
+                {ride.driver.name} is approaching <strong>{ride.pickupLabel}</strong>. Please meet your chauffeur at the roadside.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setPushAlert2MinDismissed(true)}
+            className="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-neutral-950 font-bold rounded-lg text-xs cursor-pointer shrink-0 ml-2"
+          >
+            I'm Ready
+          </button>
+        </div>
+      )}
+
       {/* TRIP STATUS STEPPER (Lets user switch/preview stages like 'Trip In Progress across Dominica') */}
       <div className="bg-neutral-950/90 px-4 sm:px-6 py-2.5 border-b border-neutral-800 flex flex-wrap items-center justify-between gap-3 text-xs">
         <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
@@ -426,6 +537,25 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* DOMINICA OFFLINE MAP TILE CACHE STATUS (SERVICE WORKER STRATEGY) */}
+      <div className="px-4 sm:px-6 py-2.5 bg-neutral-950/90 border-b border-neutral-800/80 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+        <div className="flex items-center gap-2 text-neutral-300">
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/30 text-emerald-300 font-mono text-[11px] font-semibold">
+            <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Dominica Map Tiles Cached (Offline-Ready)</span>
+          </span>
+          <span className="text-[11px] text-neutral-400 hidden lg:inline">
+            SW pre-caches Roseau, Portsmouth, Pont Cassé &amp; DOM Airport segments so tracking survives rainforest cellular dropouts.
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-[10px] text-neutral-400 font-mono">
+            Cache: elite-ride-map-tiles-v1
+          </span>
         </div>
       </div>
 
@@ -871,7 +1001,7 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
                 <span className="font-mono">{formatFare(ride.fare.baseFeeXCD, currency)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">Mileage (PER mi × 10 EC$)</span>
+                <span className="text-neutral-400">Mileage ({ride.fare.distanceMiles || 1} mi × 5 EC$)</span>
                 <span className="font-mono">{formatFare(ride.fare.distanceFeeXCD, currency)}</span>
               </div>
               <div className="flex justify-between">
@@ -913,6 +1043,88 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
             )}
           </div>
 
+          {/* Rider Rating & Written Review Component on Completed Trip */}
+          {currentStatus === 'completed' && (
+            <div className="p-4 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-3.5">
+              <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  Rate Your Chauffeur
+                </span>
+                <span className="text-[10px] text-emerald-400 font-mono">Trip Completed</span>
+              </div>
+
+              {reviewSubmitted ? (
+                <div className="p-3 bg-emerald-950/80 border border-emerald-800 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Thank you! Your rating and written review have been submitted to {ride.driver.name}'s chauffeur profile.</span>
+                </div>
+              ) : (
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] text-neutral-400 mb-1">
+                      Chauffeur Performance (1 to 5 Stars):
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setUserRating(star)}
+                          className="p-1 text-neutral-600 hover:text-amber-400 cursor-pointer transition-colors"
+                        >
+                          <Star
+                            className={`w-5 h-5 ${
+                              userRating >= star
+                                ? 'text-amber-400 fill-amber-400'
+                                : 'text-neutral-700'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                      <span className="ml-2 font-mono font-bold text-amber-400">{userRating}.0 / 5.0</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-neutral-400 mb-1">
+                      Written Review for Chauffeur:
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={userReview}
+                      onChange={(e) => setUserReview(e.target.value)}
+                      placeholder="e.g. Great drive through the mountain pass, very professional and punctual."
+                      className="w-full bg-neutral-900 border border-neutral-700 rounded-xl p-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setReviewSubmitted(true)}
+                    className="w-full py-2 bg-neutral-800 hover:bg-neutral-700 text-emerald-400 font-bold rounded-xl text-xs border border-emerald-500/40 cursor-pointer transition-colors"
+                  >
+                    Submit Rider Review
+                  </button>
+                </div>
+              )}
+
+              {/* Driver's Rating for the Passenger */}
+              <div className="p-3 bg-neutral-900 rounded-xl border border-neutral-800 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-neutral-300">
+                    {ride.driver.name}'s Rating for You:
+                  </span>
+                  <div className="flex items-center text-amber-400 text-xs font-mono font-bold">
+                    <span>★ 5.0</span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-neutral-400 italic">
+                  "Courteous passenger, ready at pickup location on time. Excellent rider!"
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Cancellation or Completion Action */}
           {currentStatus === 'completed' ? (
             <button
@@ -931,6 +1143,39 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
           )}
         </div>
       </div>
+
+      {/* INTEGRATED MESSAGING COMPONENT - INTEGRATED INTO TRACKING VIEW ONLY WHEN IN_TRANSIT */}
+      {currentStatus === 'in_transit' && (
+        <div className="p-6 border-t border-neutral-800 bg-neutral-950/40">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-neutral-950 p-4 rounded-2xl border border-neutral-800">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-emerald-400" />
+                  <span>Real-Time In-Transit Passenger &amp; Chauffeur Messaging</span>
+                </h3>
+              </div>
+              <p className="text-xs text-neutral-400 mt-1">
+                Direct conversation channel between {currentRider ? currentRider.fullName : 'Rider'} and Chauffeur {ride.driver.name}. Cleared automatically once trip is completed.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[11px] font-mono font-bold">
+                STATUS: IN_TRANSIT
+              </span>
+            </div>
+          </div>
+
+          <Messaging
+            currentRider={currentRider}
+            activeDriver={ride.driver}
+            rideStatus={currentStatus}
+            rideId={ride.id}
+            isInline={true}
+          />
+        </div>
+      )}
 
       {/* FULLSCREEN STREET VIEW THEATER MODAL */}
       {isFullscreenStreetView && (
@@ -1179,110 +1424,17 @@ export const LiveTrackingSimulator: React.FC<LiveTrackingSimulatorProps> = ({
         </div>
       )}
 
-      {/* REAL-TIME IN-APP CHAT MODAL WITH DRIVER (SIMULATED MESSAGING STATE) */}
+      {/* REAL-TIME IN-APP CHAT MODAL WITH DRIVER */}
       {showChatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-md h-[500px] flex flex-col overflow-hidden shadow-2xl">
-            {/* Header */}
-            <div className="p-4 bg-neutral-950 border-b border-neutral-800 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-neutral-800 border border-neutral-700 flex items-center justify-center font-bold text-white text-sm">
-                  {ride.driver.name.split(' ').map((n) => n[0]).join('')}
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <span>{ride.driver.name}</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  </h4>
-                  <span className="text-[11px] text-emerald-400 font-mono">
-                    {ride.driver.vehicleModel} · {ride.driver.licensePlate}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowChatModal(false)}
-                className="p-1.5 text-neutral-400 hover:text-white rounded-lg bg-neutral-800 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Messages Body */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-neutral-950/40">
-              {chatMessages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
-                >
-                  <div
-                    className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
-                      msg.sender === 'user'
-                        ? 'bg-emerald-500 text-neutral-950 font-medium'
-                        : 'bg-neutral-800 text-neutral-100 border border-neutral-700'
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
-                  <span className="text-[9px] text-neutral-500 mt-0.5 px-1">{msg.time}</span>
-                </div>
-              ))}
-
-              {/* Typing indicator */}
-              {isDriverTyping && (
-                <div className="flex items-center gap-2 text-xs text-neutral-400 pl-1">
-                  <div className="flex gap-1 items-center bg-neutral-800 px-3 py-1.5 rounded-full border border-neutral-700">
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce" />
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce [animation-delay:0.4s]" />
-                  </div>
-                  <span className="text-[11px] font-mono text-emerald-400">{ride.driver.name.split(' ')[0]} is typing...</span>
-                </div>
-              )}
-            </div>
-
-            {/* Quick response chips */}
-            <div className="px-3 py-2 bg-neutral-950/80 border-t border-neutral-800 flex items-center gap-1.5 overflow-x-auto text-[11px] shrink-0">
-              <span className="text-neutral-500 shrink-0 text-[10px]">Quick:</span>
-              {[
-                "I'm outside waiting",
-                'I have 2 large bags',
-                'What colour is your car?',
-                'Take your time!',
-              ].map((chip) => (
-                <button
-                  key={chip}
-                  type="button"
-                  onClick={() => handleSendChatMessage(chip)}
-                  className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-emerald-500/50 text-neutral-300 text-[11px] whitespace-nowrap transition-colors cursor-pointer"
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
-
-            {/* Input Bar */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendChatMessage();
-              }}
-              className="p-3 bg-neutral-950 border-t border-neutral-800 flex gap-2 shrink-0"
-            >
-              <input
-                type="text"
-                placeholder="Message your driver..."
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-              />
-              <button
-                type="submit"
-                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 rounded-xl text-xs font-bold cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5" />
-              </button>
-            </form>
-          </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <Messaging
+            currentRider={currentRider}
+            activeDriver={ride.driver}
+            rideStatus={currentStatus}
+            rideId={ride.id}
+            onClose={() => setShowChatModal(false)}
+            isInline={false}
+          />
         </div>
       )}
 

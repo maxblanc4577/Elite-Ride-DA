@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   MapPin,
   Clock,
@@ -87,8 +87,11 @@ export const RideEstimationWidget: React.FC<RideEstimationWidgetProps> = ({
   const [receiptNotice, setReceiptNotice] = useState<string | null>(null);
 
   // Current active destination metadata
-  const currentMeta = resolveEliteLocationMeta(dropoffId);
-  const pickupLocationObj = DOMINICA_LOCATIONS.find((l) => l.id === pickupId) || DOMINICA_LOCATIONS[0];
+  const currentMeta = useMemo(() => resolveEliteLocationMeta(dropoffId), [dropoffId]);
+  const pickupLocationObj = useMemo(
+    () => DOMINICA_LOCATIONS.find((l) => l.id === pickupId) || DOMINICA_LOCATIONS[0],
+    [pickupId]
+  );
 
   // Total journey seconds & Remaining seconds for countdown
   const totalJourneySeconds = (currentMeta?.minutesRemaining || 25) * 60;
@@ -112,14 +115,14 @@ export const RideEstimationWidget: React.FC<RideEstimationWidgetProps> = ({
     }
   }, [dropoffId, isFareReset, currentMeta.minutesRemaining]);
 
-  // Live countdown tick
+  // Live countdown tick (runs independently of secondsRemaining state)
   useEffect(() => {
-    if (secondsRemaining <= 0 || isFareReset) return;
+    if (isFareReset) return;
     const interval = setInterval(() => {
       setSecondsRemaining((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(interval);
-  }, [secondsRemaining, isFareReset]);
+  }, [isFareReset, dropoffId]);
 
   // Format countdown MM:SS
   const formatCountdown = (totalSeconds: number) => {
@@ -191,10 +194,22 @@ export const RideEstimationWidget: React.FC<RideEstimationWidgetProps> = ({
       try {
         localStorage.setItem('eliteride_offline_last_estimation', JSON.stringify(cachePayload));
         localStorage.setItem('elite_last_ride_estimation', JSON.stringify(cachePayload));
-        setOfflineCachedData(cachePayload);
       } catch {
         // ignore
       }
+
+      setOfflineCachedData((prev: any) => {
+        if (
+          prev &&
+          prev.pickupId === pickupId &&
+          prev.dropoffId === dropoffId &&
+          prev.fareXCD === fareTotalXCD &&
+          prev.distanceMiles === distanceMiles
+        ) {
+          return prev;
+        }
+        return cachePayload;
+      });
 
       // 2. Service Worker CacheStorage
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -212,7 +227,18 @@ export const RideEstimationWidget: React.FC<RideEstimationWidgetProps> = ({
         }).catch(() => {});
       }
     }
-  }, [pickupId, dropoffId, fareTotalXCD, distanceMiles, currentMeta, isFareReset, pickupLocationObj.name]);
+  }, [
+    pickupId,
+    dropoffId,
+    fareTotalXCD,
+    distanceMiles,
+    isFareReset,
+    currentMeta.name,
+    currentMeta.district,
+    currentMeta.travelTime,
+    currentMeta.highwayCorridor,
+    pickupLocationObj.name,
+  ]);
 
   // Restore cached estimation
   const handleRestoreCachedEstimate = () => {
@@ -236,7 +262,7 @@ export const RideEstimationWidget: React.FC<RideEstimationWidgetProps> = ({
   };
 
   // Generate & Print Trip Summary Receipt with jsPDF
-  const handlePrintTripSummary = () => {
+  const handlePrintTripSummary = useCallback(() => {
     try {
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -307,16 +333,30 @@ export const RideEstimationWidget: React.FC<RideEstimationWidgetProps> = ({
     } catch (err) {
       console.error('Failed to generate PDF summary:', err);
     }
-  };
+  }, [
+    pickupLocationObj.name,
+    currentMeta,
+    distanceMiles,
+    secondsRemaining,
+    completedPct,
+    fareTotalXCD,
+  ]);
+
+  const onDropoffRef = useRef(onDropoffChange);
+  useEffect(() => {
+    onDropoffRef.current = onDropoffChange;
+  }, [onDropoffChange]);
 
   // Expose global window helper for PDF printing
   useEffect(() => {
     (window as any).printEstTripSummaryPDF = handlePrintTripSummary;
     (window as any).resolveEliteLocationMeta = resolveEliteLocationMeta;
     (window as any).syncEstEtaCountdownTimer = (destId: string) => {
-      onDropoffChange(destId);
+      if (onDropoffRef.current) {
+        onDropoffRef.current(destId);
+      }
     };
-  }, [handlePrintTripSummary, onDropoffChange]);
+  }, [handlePrintTripSummary]);
 
   // Listen to online / offline network events
   useEffect(() => {

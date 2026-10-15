@@ -37,20 +37,51 @@ export const RiderAuthModal: React.FC<RiderAuthModalProps> = ({
   onLogout,
 }) => {
   const [mode, setMode] = useState<'signup' | 'signin'>('signup');
-  const [profileTab, setProfileTab] = useState<'overview' | 'history'>('history');
+  const [profileTab, setProfileTab] = useState<'contact' | 'history' | 'scheduled' | 'overview'>('contact');
   const [rideHistory, setRideHistory] = useState<RideHistoryItem[]>([]);
+  const [scheduledTransfers, setScheduledTransfers] = useState<any[]>([]);
   const [selectedReceipt, setSelectedReceipt] = useState<RideHistoryItem | null>(null);
 
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '+1 (767) ',
     email: '',
+    flightNumber: '',
     homeLocationId: 'ROSEAU',
     preferredPayment: 'nbd_mobanking' as 'nbd_mobanking' | 'mpay' | 'card_xcd' | 'cash',
     nbdAccountNumber: '',
   });
 
+  const [profileFormData, setProfileFormData] = useState({
+    fullName: '',
+    phone: '+1 (767) ',
+    email: '',
+    flightNumber: '',
+    homeLocationId: 'ROSEAU',
+    preferredPayment: 'nbd_mobanking' as 'nbd_mobanking' | 'mpay' | 'card_xcd' | 'cash',
+    nbdAccountNumber: '',
+  });
+
+  const [profileSavedToast, setProfileSavedToast] = useState(false);
+  const [profileErrorMsg, setProfileErrorMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Sync profile form data whenever currentRider changes or modal opens
+  useEffect(() => {
+    if (currentRider) {
+      setProfileFormData({
+        fullName: currentRider.fullName || '',
+        phone: currentRider.phone || '+1 (767) ',
+        email: currentRider.email || '',
+        flightNumber: currentRider.flightNumber || '',
+        homeLocationId: currentRider.homeLocationId || 'ROSEAU',
+        preferredPayment: currentRider.preferredPayment || 'nbd_mobanking',
+        nbdAccountNumber: currentRider.nbdAccountNumber || '',
+      });
+      setProfileSavedToast(false);
+      setProfileErrorMsg(null);
+    }
+  }, [currentRider, isOpen]);
 
   // Load Ride History from local storage whenever modal opens or rider changes
   useEffect(() => {
@@ -116,6 +147,29 @@ export const RiderAuthModal: React.FC<RiderAuthModalProps> = ({
         localStorage.setItem(storageKey, JSON.stringify(seededTrips));
         setRideHistory(seededTrips);
       }
+
+      // Load Scheduled Airport Transfers
+      const scheduledKey = `elite_ride_scheduled_${currentRider.id}`;
+      const scheduledSaved = localStorage.getItem(scheduledKey);
+      if (scheduledSaved) {
+        setScheduledTransfers(JSON.parse(scheduledSaved));
+      } else {
+        const seedScheduled = [
+          {
+            id: 'SCH-DOM-881',
+            date: '2026-10-18',
+            time: '14:30',
+            pickupLabel: 'Secret Bay Luxury Villas (Portsmouth)',
+            dropoffLabel: 'Douglas-Charles Airport (DOM)',
+            tierName: 'Airport VIP Transfer',
+            fareXCD: 425.0,
+            receiptNumber: 'REC-DOM-782109',
+            createdAt: Date.now() - 3600000,
+          },
+        ];
+        localStorage.setItem(scheduledKey, JSON.stringify(seedScheduled));
+        setScheduledTransfers(seedScheduled);
+      }
     } catch {
       // storage unavailable
     }
@@ -131,6 +185,36 @@ export const RiderAuthModal: React.FC<RiderAuthModalProps> = ({
   };
 
   if (!isOpen) return null;
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentRider) return;
+    setProfileErrorMsg(null);
+
+    if (!profileFormData.fullName.trim()) {
+      setProfileErrorMsg('Please enter your full legal name');
+      return;
+    }
+    if (!profileFormData.phone.trim() || profileFormData.phone.trim() === '+1 (767)') {
+      setProfileErrorMsg('Please enter your mobile or WhatsApp contact number');
+      return;
+    }
+
+    const updatedRider: RiderProfile = {
+      ...currentRider,
+      fullName: profileFormData.fullName.trim(),
+      phone: profileFormData.phone.trim(),
+      email: profileFormData.email.trim() || 'rider@dominica.dm',
+      flightNumber: profileFormData.flightNumber.trim(),
+      homeLocationId: profileFormData.homeLocationId,
+      preferredPayment: profileFormData.preferredPayment,
+      nbdAccountNumber: profileFormData.nbdAccountNumber.trim(),
+    };
+
+    onLogin(updatedRider);
+    setProfileSavedToast(true);
+    setTimeout(() => setProfileSavedToast(false), 3500);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,6 +233,7 @@ export const RiderAuthModal: React.FC<RiderAuthModalProps> = ({
       fullName: mode === 'signup' ? formData.fullName : 'Dominica Rider',
       phone: formData.phone,
       email: formData.email || 'rider@dominica.dm',
+      flightNumber: formData.flightNumber.trim(),
       homeLocationId: formData.homeLocationId,
       preferredPayment: formData.preferredPayment,
       nbdAccountNumber: formData.nbdAccountNumber,
@@ -196,8 +281,20 @@ export const RiderAuthModal: React.FC<RiderAuthModalProps> = ({
                 </div>
               </div>
 
-              {/* Rider Tabs: Overview vs Ride History */}
-              <div className="flex items-center p-1 bg-neutral-950 rounded-xl border border-neutral-800 text-xs font-semibold">
+              {/* Rider Tabs: Profile & Contact vs Ride History vs Scheduled vs Account Status */}
+              <div className="flex flex-wrap items-center p-1 bg-neutral-950 rounded-xl border border-neutral-800 text-xs font-semibold gap-1">
+                <button
+                  type="button"
+                  onClick={() => setProfileTab('contact')}
+                  className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
+                    profileTab === 'contact'
+                      ? 'bg-emerald-500 text-neutral-950 shadow-sm font-bold'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>Profile & Contact</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setProfileTab('history')}
@@ -212,17 +309,181 @@ export const RiderAuthModal: React.FC<RiderAuthModalProps> = ({
                 </button>
                 <button
                   type="button"
+                  onClick={() => setProfileTab('scheduled')}
+                  className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
+                    profileTab === 'scheduled'
+                      ? 'bg-emerald-500 text-neutral-950 shadow-sm font-bold'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Scheduled ({scheduledTransfers.length})</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setProfileTab('overview')}
-                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
                     profileTab === 'overview'
                       ? 'bg-emerald-500 text-neutral-950 shadow-sm font-bold'
                       : 'text-neutral-400 hover:text-white'
                   }`}
                 >
-                  <span>Preferences</span>
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Status</span>
                 </button>
               </div>
             </div>
+
+            {/* TAB: PROFILE & CONTACT DETAILS (Editable) */}
+            {profileTab === 'contact' && (
+              <form onSubmit={handleSaveProfile} className="flex-1 overflow-y-auto space-y-4 pr-1">
+                {profileSavedToast && (
+                  <div className="p-3 bg-emerald-950/80 border border-emerald-800 text-emerald-300 rounded-xl text-xs flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Profile &amp; contact details updated! All future dispatches will use these verified details.</span>
+                  </div>
+                )}
+                {profileErrorMsg && (
+                  <div className="p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-xl text-xs flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                    <span>{profileErrorMsg}</span>
+                  </div>
+                )}
+
+                <div className="p-4 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-neutral-800">
+                    <User className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      Lead Rider Contact Information
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1">
+                        Lead Rider Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Julian Montgomery"
+                        value={profileFormData.fullName}
+                        onChange={(e) => setProfileFormData({ ...profileFormData, fullName: e.target.value })}
+                        className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1">
+                        WhatsApp / Mobile Number *
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="+1 (767) 555-0192"
+                        value={profileFormData.phone}
+                        onChange={(e) => setProfileFormData({ ...profileFormData, phone: e.target.value })}
+                        className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1">
+                        Email Address (For Invoices & 15% VAT Receipts)
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="e.g. julian@example.dm"
+                        value={profileFormData.email}
+                        onChange={(e) => setProfileFormData({ ...profileFormData, email: e.target.value })}
+                        className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1">
+                        Flight Number (Optional for DOM / DCF live radar sync)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. AA 3169 / interCaribbean 234"
+                        value={profileFormData.flightNumber}
+                        onChange={(e) => setProfileFormData({ ...profileFormData, flightNumber: e.target.value })}
+                        className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white uppercase font-mono focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-neutral-950 rounded-2xl border border-neutral-800 space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-neutral-800">
+                    <MapPin className="w-4 h-4 text-emerald-400" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      Dominica Community &amp; Payment Preferences
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1">
+                        Default Frequent / Home Pickup Community
+                      </label>
+                      <select
+                        value={profileFormData.homeLocationId}
+                        onChange={(e) => setProfileFormData({ ...profileFormData, homeLocationId: e.target.value })}
+                        className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      >
+                        {DOMINICA_LOCATIONS.map((loc) => (
+                          <option key={loc.id} value={loc.id}>
+                            {loc.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1">
+                        Preferred Payment Method
+                      </label>
+                      <select
+                        value={profileFormData.preferredPayment}
+                        onChange={(e) => setProfileFormData({ ...profileFormData, preferredPayment: e.target.value as any })}
+                        className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      >
+                        {PAYMENT_METHODS.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {profileFormData.preferredPayment === 'nbd_mobanking' && (
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-neutral-300 mb-1">
+                          Default NBD MoBanking Account ID (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. NBD-0091-8842"
+                          value={profileFormData.nbdAccountNumber}
+                          onChange={(e) => setProfileFormData({ ...profileFormData, nbdAccountNumber: e.target.value })}
+                          className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white font-mono uppercase focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center justify-center gap-2 transition-all"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Save Profile &amp; Contact Details</span>
+                </button>
+              </form>
+            )}
 
             {/* TAB 1: RIDE HISTORY SECTION (Persisted in Local Storage) */}
             {profileTab === 'history' && (
@@ -382,6 +643,82 @@ export const RiderAuthModal: React.FC<RiderAuthModalProps> = ({
                     Your rider profile and previous trip history are securely stored in your browser's persistent local storage.
                   </span>
                 </div>
+              </div>
+            )}
+
+            {/* TAB: SCHEDULED AIRPORT TRANSFERS */}
+            {profileTab === 'scheduled' && (
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+                  <div>
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                      Upcoming Dominica Airport Transfers
+                    </h4>
+                    <p className="text-[11px] text-neutral-400 mt-0.5">
+                      Reserved chauffeurs staged for your scheduled arrival or departure flights.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    {scheduledTransfers.length} Booked
+                  </span>
+                </div>
+
+                {scheduledTransfers.length === 0 ? (
+                  <div className="p-8 text-center bg-neutral-950 rounded-2xl border border-neutral-800 text-xs text-neutral-400 space-y-2">
+                    <Calendar className="w-8 h-8 text-neutral-600 mx-auto" />
+                    <p>No upcoming scheduled rides found.</p>
+                    <p className="text-[11px] text-neutral-500">
+                      Toggle "Schedule Ahead for Airport Transfer" in the booking form to book future rides.
+                    </p>
+                  </div>
+                ) : (
+                  scheduledTransfers.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      className="p-4 bg-neutral-950 rounded-2xl border border-neutral-800 hover:border-emerald-500/40 transition-colors space-y-3 text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded font-mono font-bold text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            {item.id}
+                          </span>
+                          <span className="font-bold text-white">{item.tierName}</span>
+                        </div>
+                        <span className="text-emerald-400 font-mono font-bold">
+                          EC$ {item.fareXCD ? Number(item.fareXCD).toFixed(2) : '390.00'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px] text-neutral-400 bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-850">
+                        <div>
+                          <span className="text-neutral-500 block">Date &amp; Time:</span>
+                          <span className="font-semibold text-white">
+                            {item.date} at {item.time}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-neutral-500 block">Status &amp; Receipt:</span>
+                          <span className="text-emerald-400 font-mono">
+                            {item.receiptNumber || 'CONFIRMED'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-[11px]">
+                        <div className="flex items-center gap-1.5 text-neutral-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                          <span className="text-neutral-500">Pickup:</span>
+                          <span className="font-medium text-white truncate">{item.pickupLabel}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-neutral-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                          <span className="text-neutral-500">Destination:</span>
+                          <span className="font-medium text-white truncate">{item.dropoffLabel}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 
@@ -558,6 +895,19 @@ export const RiderAuthModal: React.FC<RiderAuthModalProps> = ({
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-300 mb-1">
+                      Flight Number (Optional for DOM / DCF live radar sync)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. AA 3169 / interCaribbean 234"
+                      value={formData.flightNumber}
+                      onChange={(e) => setFormData({ ...formData, flightNumber: e.target.value })}
+                      className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white uppercase font-mono focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 

@@ -16,8 +16,12 @@ import { PoliciesSection } from './components/PoliciesSection';
 import { Footer } from './components/Footer';
 import { AppOpeningLogoScreen } from './components/AppOpeningLogoScreen';
 import { LogoDesignViewerModal } from './components/LogoDesignViewerModal';
+import { TopRatedDriversSection } from './components/TopRatedDriversSection';
+import { StripeMerchantModal } from './components/StripeMerchantModal';
+import { StripeMerchantProfile, DEFAULT_STRIPE_MERCHANT } from './types/merchant';
 import { AppView, Currency, ActiveRide, RiderProfile, ActiveDriver, RideHistoryItem } from './types/booking';
 import { VEHICLE_TIERS, DOMINICA_LOCATIONS } from './data/dominicaData';
+import { SupportedLanguage } from './utils/translations';
 import { ArrowRight, ShieldCheck, MapPin, Car, Radio, Smartphone, ChevronRight, ChevronDown, ChevronUp, Award, Compass, Sparkles } from 'lucide-react';
 
 export default function App() {
@@ -29,6 +33,11 @@ export default function App() {
   // App Opening Logo Screen (Opens the app showcasing the official logo design)
   const [showOpeningLogo, setShowOpeningLogo] = useState<boolean>(true);
   const [isLogoDesignModalOpen, setIsLogoDesignModalOpen] = useState<boolean>(false);
+
+  // Language, Theme, and Accessibility Mode State
+  const [language, setLanguage] = useState<SupportedLanguage>('en');
+  const [themeMode, setThemeMode] = useState<'dark' | 'day'>('dark');
+  const [accessibilityMode, setAccessibilityMode] = useState<boolean>(false);
 
   // Rider authentication profile state
   const [currentRider, setCurrentRider] = useState<RiderProfile | null>(() => {
@@ -51,6 +60,35 @@ export default function App() {
     }
   });
   const [isDriverSignUpOpen, setIsDriverSignUpOpen] = useState(false);
+
+  // Stripe Merchant Profile State
+  const [stripeMerchant, setStripeMerchant] = useState<StripeMerchantProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem('elite_ride_stripe_merchant');
+      return saved ? JSON.parse(saved) : DEFAULT_STRIPE_MERCHANT;
+    } catch {
+      return DEFAULT_STRIPE_MERCHANT;
+    }
+  });
+  const [isStripeMerchantModalOpen, setIsStripeMerchantModalOpen] = useState<boolean>(false);
+
+  const handleStripeMerchantLogin = (merchant: StripeMerchantProfile) => {
+    setStripeMerchant(merchant);
+    try {
+      localStorage.setItem('elite_ride_stripe_merchant', JSON.stringify(merchant));
+    } catch {
+      // storage unavailable
+    }
+  };
+
+  const handleStripeMerchantLogout = () => {
+    setStripeMerchant(null);
+    try {
+      localStorage.removeItem('elite_ride_stripe_merchant');
+    } catch {
+      // storage unavailable
+    }
+  };
 
   const handleDriverRegistered = (driver: ActiveDriver) => {
     setCurrentDriver(driver);
@@ -164,7 +202,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col font-sans selection:bg-emerald-600 selection:text-white">
+    <div className={`min-h-screen flex flex-col font-sans selection:bg-emerald-600 selection:text-white transition-colors duration-200 ${themeMode === 'day' ? 'day-mode bg-slate-50 text-slate-900' : 'bg-neutral-950 text-neutral-100'} ${accessibilityMode ? 'accessibility-mode' : ''}`}>
       {/* 3-Zone Clean Header with Admin Portal, Rider Sign Up & Driver Sign Up */}
       <Navbar
         currentView={currentView}
@@ -181,6 +219,12 @@ export default function App() {
         onOpenDriverSignUp={() => setIsDriverSignUpOpen(true)}
         onOpenLogoDesign={() => setIsLogoDesignModalOpen(true)}
         onReplaySplash={() => setShowOpeningLogo(true)}
+        language={language}
+        onLanguageChange={setLanguage}
+        themeMode={themeMode}
+        onToggleTheme={() => setThemeMode((prev) => (prev === 'dark' ? 'day' : 'dark'))}
+        accessibilityMode={accessibilityMode}
+        onToggleAccessibility={() => setAccessibilityMode((prev) => !prev)}
       />
 
       <main className="flex-1 pb-16">
@@ -247,6 +291,15 @@ export default function App() {
               </div>
             </section>
 
+            {/* Top Rated Dominica Chauffeurs Section */}
+            <TopRatedDriversSection
+              onSelectTier={(tierId) => setSelectedTierId(tierId)}
+              onBookNow={() => {
+                setCurrentView('book');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
+
             {/* Official Policies & 15% Cancellation Fee */}
             <PoliciesSection />
           </div>
@@ -306,6 +359,12 @@ export default function App() {
                 onRideDispatched={handleRideDispatched}
                 currentRider={currentRider}
                 onOpenRiderAuth={() => setIsRiderAuthOpen(true)}
+                merchant={stripeMerchant}
+                onOpenAdminPortal={() => {
+                  setCurrentView('admin_portal');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onMerchantLogin={handleStripeMerchantLogin}
               />
             </section>
 
@@ -320,6 +379,7 @@ export default function App() {
             <LiveTrackingSimulator
               ride={activeRide}
               currency={currency}
+              currentRider={currentRider}
               onCancelRide={handleCancelRide}
               onResetRide={handleResetRide}
               onStartDemoRide={handleRideDispatched}
@@ -330,7 +390,13 @@ export default function App() {
         {/* Admin Portal featuring the Active Driver Console */}
         {currentView === 'admin_portal' && (
           <div className="py-10 px-4 sm:px-6 lg:px-8">
-            <AdminPortal currency={currency} />
+            <AdminPortal
+              currency={currency}
+              merchant={stripeMerchant}
+              onOpenMerchantLogin={() => setIsStripeMerchantModalOpen(true)}
+              onMerchantLogin={handleStripeMerchantLogin}
+              onMerchantLogout={handleStripeMerchantLogout}
+            />
           </div>
         )}
 
@@ -347,7 +413,7 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer */}
+      {/* Footer without Stripe Merchant (Stripe Merchant is in Admin Console) */}
       <Footer
         onNavigate={(view) => {
           setCurrentView(view);
@@ -377,6 +443,16 @@ export default function App() {
         }}
         currentDriver={currentDriver}
         onDriverSignOut={handleDriverSignOut}
+      />
+
+      {/* Stripe Merchant Portal & Authentication Modal */}
+      <StripeMerchantModal
+        isOpen={isStripeMerchantModalOpen}
+        onClose={() => setIsStripeMerchantModalOpen(false)}
+        currency={currency}
+        merchant={stripeMerchant}
+        onMerchantLogin={handleStripeMerchantLogin}
+        onMerchantLogout={handleStripeMerchantLogout}
       />
 
       {/* App Launch Opening Logo Screen (Opens the app showcasing the official logo design) */}

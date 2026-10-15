@@ -35,9 +35,11 @@ import {
   getRouteMiles,
 } from '../data/dominicaData';
 import { Currency, RideBookingData, ActiveRide, ActiveDriver, RiderProfile } from '../types/booking';
+import { StripeMerchantProfile } from '../types/merchant';
 import { calculateRideFare, formatFare } from '../utils/pricing';
 import { RideEstimationWidget } from './RideEstimationWidget';
 import { EliteRideLogo } from './EliteRideLogo';
+import { StripePaymentModal, StripePaymentReceipt } from './StripePaymentModal';
 
 interface RideBookingFormProps {
   currency: Currency;
@@ -46,6 +48,9 @@ interface RideBookingFormProps {
   onOpenRiderAuth?: () => void;
   selectedTierId?: string;
   onTierChange?: (tierId: string) => void;
+  merchant?: StripeMerchantProfile | null;
+  onOpenAdminPortal?: () => void;
+  onMerchantLogin?: (merchant: StripeMerchantProfile) => void;
 }
 
 export const RideBookingForm: React.FC<RideBookingFormProps> = ({
@@ -55,6 +60,9 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
   onOpenRiderAuth,
   selectedTierId = 'standard-sedan',
   onTierChange,
+  merchant,
+  onOpenAdminPortal,
+  onMerchantLogin,
 }) => {
   const [booking, setBooking] = useState<RideBookingData>({
     pickupId: 'ROSEAU',
@@ -140,8 +148,11 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
 
   // Sync selectedTierId when passed from parent or quick selector
   useEffect(() => {
-    if (selectedTierId && selectedTierId !== booking.vehicleTierId) {
-      setBooking((prev) => ({ ...prev, vehicleTierId: selectedTierId }));
+    if (selectedTierId) {
+      setBooking((prev) => {
+        if (prev.vehicleTierId === selectedTierId) return prev;
+        return { ...prev, vehicleTierId: selectedTierId };
+      });
     }
   }, [selectedTierId]);
 
@@ -238,14 +249,12 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
     }
   };
 
+  const [isStripeModalOpen, setIsStripeModalOpen] = useState(false);
+  const [registrationNotice, setRegistrationNotice] = useState<string | null>(null);
+  const [scheduledSuccessNotice, setScheduledSuccessNotice] = useState<string | null>(null);
+
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    if (!booking.passengerName.trim()) {
-      errors.passengerName = 'Please enter rider full name';
-    }
-    if (!booking.passengerPhone.trim()) {
-      errors.passengerPhone = 'Please enter WhatsApp or mobile contact for driver dispatch';
-    }
     if (booking.pickupId === booking.dropoffId && !booking.customPickup) {
       errors.dropoffId = 'Pickup and destination must be different locations';
     }
@@ -257,11 +266,60 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
     e.preventDefault();
     if (!validateForm()) return;
 
+    // Confirm riders registration before completing booking
+    if (!currentRider) {
+      setRegistrationNotice('Please register or sign in as a verified Dominica rider before completing your booking.');
+      if (onOpenRiderAuth) {
+        onOpenRiderAuth();
+      }
+      return;
+    }
+    setRegistrationNotice(null);
+
+    // Open Stripe Payment Modal to confirm genuine payment before dispatching notification to drivers
+    setIsStripeModalOpen(true);
+  };
+
+  const handlePaymentConfirmed = (receipt: StripePaymentReceipt) => {
+    setIsStripeModalOpen(false);
     setIsSubmitting(true);
 
     const pickupLoc = DOMINICA_LOCATIONS.find((l) => l.id === booking.pickupId);
     const dropoffLoc = DOMINICA_LOCATIONS.find((l) => l.id === booking.dropoffId);
     const stopoverLoc = booking.hasStopover ? DOMINICA_LOCATIONS.find((l) => l.id === booking.stopoverId) : undefined;
+    const pickupLabel = pickupLoc ? pickupLoc.name : booking.customPickup || 'Dominica Pickup';
+    const dropoffLabel = dropoffLoc ? dropoffLoc.name : booking.customDropoff || 'Dominica Destination';
+    const stopoverLabel = stopoverLoc ? stopoverLoc.name : undefined;
+
+    // If Scheduled Ride: save to scheduled transfers in local storage
+    if (booking.isScheduled) {
+      try {
+        const key = `elite_ride_scheduled_${currentRider?.id || 'guest'}`;
+        const existing = localStorage.getItem(key);
+        const list = existing ? JSON.parse(existing) : [];
+        const scheduledItem = {
+          id: `SCH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+          date: booking.scheduleDate,
+          time: booking.scheduleTime,
+          pickupLabel,
+          dropoffLabel,
+          tierName: fareCalc.tier.name,
+          fareXCD: fareCalc.totalXCD,
+          receiptNumber: receipt.receiptNumber,
+          createdAt: Date.now(),
+        };
+        list.unshift(scheduledItem);
+        localStorage.setItem(key, JSON.stringify(list));
+      } catch (e) {
+        console.warn('Could not save scheduled ride:', e);
+      }
+
+      setIsSubmitting(false);
+      setScheduledSuccessNotice(
+        `Airport transfer confirmed for ${booking.scheduleDate} at ${booking.scheduleTime}! Receipt #${receipt.receiptNumber} issued & emailed. View in your Rider Profile under Scheduled Transfers.`
+      );
+      return;
+    }
 
     const driversByTier: Record<string, ActiveDriver> = {
       'mountain-4wd-suv': {
@@ -317,9 +375,14 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
         id: Math.random().toString(36).substring(2, 9).toUpperCase(),
         booking: {
           ...booking,
+          passengerName: currentRider?.fullName || 'Dominica Chauffeur Guest',
+          passengerPhone: currentRider?.phone || '+1 (767) 555-0192',
+          passengerEmail: currentRider?.email || 'info@elite-ride.org',
+          flightNumber: booking.flightNumber || currentRider?.flightNumber || '',
           isSplitFare: isSharedCoaster && isSplitFareEnabled,
           splitPassengersCount: effectiveSplitRiders,
           splitPaymentLink,
+          paymentMethod: 'card_xcd',
         },
         tier: fareCalc.tier,
         fare: {
@@ -331,15 +394,15 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
         status: 'dispatched',
         dispatchedAt: Date.now(),
         etaMinutes: Math.max(3, Math.round(fareCalc.distanceMiles * 0.4)),
-        pickupLabel: pickupLoc ? pickupLoc.name : booking.customPickup || 'Dominica Pickup',
-        dropoffLabel: dropoffLoc ? dropoffLoc.name : booking.customDropoff || 'Dominica Destination',
-        stopoverLabel: stopoverLoc ? stopoverLoc.name : undefined,
+        pickupLabel,
+        dropoffLabel,
+        stopoverLabel,
         cancelGracePeriodSeconds: 120,
       };
 
       setIsSubmitting(false);
       onRideDispatched(activeRide);
-    }, 800);
+    }, 600);
   };
 
   const isAirportRide =
@@ -816,7 +879,7 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
 
                         <div className="mt-3 pt-3 border-t border-neutral-800/80 flex items-center justify-between">
                           <span className="text-[11px] text-neutral-400">
-                            PER mi × 10 EC$ + EC$ 1.00 Base
+                            PER mi × 5 EC$ + EC$ 1.00 Base
                           </span>
                           <span className="text-xs font-bold font-mono text-emerald-400">
                             ~{formatFare(tierTotal, currency)}
@@ -1093,66 +1156,6 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
               </div>
             </label>
           </div>
-
-          {/* Passenger Information */}
-          <div className="pt-2 border-t border-neutral-800 space-y-4">
-            <span className="text-xs font-bold text-white uppercase tracking-wider block">
-              Rider Contact Information
-            </span>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-neutral-300 mb-1">
-                  Lead Rider Full Name *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Julian Montgomery"
-                  value={booking.passengerName}
-                  onChange={(e) => handleFieldChange('passengerName', e.target.value)}
-                  className={`w-full bg-neutral-950 border ${
-                    formErrors.passengerName ? 'border-red-500' : 'border-neutral-700'
-                  } rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500`}
-                />
-                {formErrors.passengerName && (
-                  <p className="mt-1 text-[11px] text-red-400">{formErrors.passengerName}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-neutral-300 mb-1">
-                  WhatsApp / Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  placeholder="+1 (767) 555-0192"
-                  value={booking.passengerPhone}
-                  onChange={(e) => handleFieldChange('passengerPhone', e.target.value)}
-                  className={`w-full bg-neutral-950 border ${
-                    formErrors.passengerPhone ? 'border-red-500' : 'border-neutral-700'
-                  } rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500`}
-                />
-                {formErrors.passengerPhone && (
-                  <p className="mt-1 text-[11px] text-red-400">{formErrors.passengerPhone}</p>
-                )}
-              </div>
-
-              {isAirportRide && (
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-neutral-300 mb-1">
-                    Flight Number (Optional for DOM / DCF live radar sync)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. AA 3169 / interCaribbean 234"
-                    value={booking.flightNumber}
-                    onChange={(e) => handleFieldChange('flightNumber', e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white uppercase font-mono"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Right Column: Fare Estimate, Dominica Payments & Dispatch (4 Cols) - CSS Selector 2 */}
@@ -1216,7 +1219,7 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
             </div>
             <div className="flex justify-between">
               <span className="text-neutral-400">
-                Mileage ({isFareReset ? 0 : fareCalc.distanceMiles} mi × 10 EC$)
+                Mileage ({isFareReset ? 0 : fareCalc.distanceMiles} mi × 5 EC$)
               </span>
               <span className="font-mono">{formatFare(displayDistanceFeeXCD, currency)}</span>
             </div>
@@ -1229,10 +1232,6 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
             <div className="flex justify-between text-neutral-400">
               <span>Subtotal</span>
               <span className="font-mono">{formatFare(displaySubtotalXCD, currency)}</span>
-            </div>
-            <div className="flex justify-between text-emerald-400/90 font-medium pt-1 border-t border-neutral-800">
-              <span>15% Dominica VAT (Included)</span>
-              <span className="font-mono">{formatFare(displayVatXCD, currency)}</span>
             </div>
           </div>
 
@@ -1368,6 +1367,34 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
             </span>
           </div>
 
+          {/* Registration Requirement Notice Banner */}
+          {registrationNotice && (
+            <div className="p-3 bg-amber-950/90 border border-amber-600/80 rounded-xl text-xs text-amber-200 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-bold block">Rider Registration Required</span>
+                <span>{registrationNotice}</span>
+                {onOpenRiderAuth && (
+                  <button
+                    type="button"
+                    onClick={onOpenRiderAuth}
+                    className="mt-1 px-3 py-1 bg-amber-400 hover:bg-amber-300 text-neutral-950 font-bold rounded-lg text-xs block cursor-pointer"
+                  >
+                    Register / Sign In Now
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Scheduled Success Notice Banner */}
+          {scheduledSuccessNotice && (
+            <div className="p-3.5 bg-emerald-950/90 border border-emerald-500 rounded-xl text-xs text-emerald-300 flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <span>{scheduledSuccessNotice}</span>
+            </div>
+          )}
+
           {/* Dispatch CTA Button */}
           <button
             type="submit"
@@ -1379,7 +1406,7 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
             ) : (
               <>
                 <span>
-                  Request {fareCalc.tier.name}
+                  {booking.isScheduled ? 'Confirm Scheduled Transfer' : `Request ${fareCalc.tier.name}`}
                   {isSharedCoaster && isSplitFareEnabled ? ` (EC$ ${splitShareXCD.toFixed(2)}/rider)` : ''}
                 </span>
                 <ArrowRight className="w-4 h-4" />
@@ -1388,6 +1415,23 @@ export const RideBookingForm: React.FC<RideBookingFormProps> = ({
           </button>
         </div>
       </form>
+
+      {/* Stripe Merchant Payment Modal */}
+      <StripePaymentModal
+        isOpen={isStripeModalOpen}
+        onClose={() => setIsStripeModalOpen(false)}
+        fareCalc={fareCalc}
+        tier={fareCalc.tier}
+        currency={currency}
+        passengerName={currentRider?.fullName || 'Dominica Chauffeur Guest'}
+        passengerEmail={currentRider?.email || 'info@elite-ride.org'}
+        pickupLabel={pickupLocationObj ? pickupLocationObj.name : booking.customPickup || 'Dominica Pickup'}
+        dropoffLabel={dropoffLocationObj ? dropoffLocationObj.name : booking.customDropoff || 'Dominica Destination'}
+        onPaymentSuccess={handlePaymentConfirmed}
+        merchant={merchant}
+        onOpenAdminPortal={onOpenAdminPortal}
+        onMerchantLogin={onMerchantLogin}
+      />
     </div>
   );
 };

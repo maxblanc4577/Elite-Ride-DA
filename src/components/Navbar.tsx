@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Menu, X, Car, ShieldCheck, User, Radio, UserPlus, LayoutDashboard } from 'lucide-react';
+import { Menu, X, Car, ShieldCheck, User, Radio, UserPlus, LayoutDashboard, Globe, Sun, Moon, Eye } from 'lucide-react';
 import { AppView, Currency, RiderProfile, ActiveDriver } from '../types/booking';
 import { EliteRideLogo } from './EliteRideLogo';
+import { SupportedLanguage, TRANSLATIONS } from '../utils/translations';
 
 interface NavbarProps {
   currentView: AppView;
@@ -15,6 +16,12 @@ interface NavbarProps {
   onOpenDriverSignUp?: () => void;
   onOpenLogoDesign?: () => void;
   onReplaySplash?: () => void;
+  language?: SupportedLanguage;
+  onLanguageChange?: (lang: SupportedLanguage) => void;
+  themeMode?: 'dark' | 'day';
+  onToggleTheme?: () => void;
+  accessibilityMode?: boolean;
+  onToggleAccessibility?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,8 +36,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenDriverSignUp,
   onOpenLogoDesign,
   onReplaySplash,
+  language = 'en',
+  onLanguageChange,
+  themeMode = 'dark',
+  onToggleTheme,
+  accessibilityMode = false,
+  onToggleAccessibility,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const t = TRANSLATIONS[language] || TRANSLATIONS.en;
 
   return (
     <header className="sticky top-0 z-50 bg-neutral-950/90 backdrop-blur-md border-b border-neutral-800">
@@ -49,17 +64,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="hover:opacity-95 transition-opacity"
             />
           </button>
-
-          {onOpenLogoDesign && (
-            <button
-              onClick={onOpenLogoDesign}
-              title="View Elite Ride Logo Design System"
-              className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-md bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Logo Design</span>
-            </button>
-          )}
         </div>
 
         {/* Zone 2: Navigation Links (Single-line, no wraps) */}
@@ -142,6 +146,77 @@ export const Navbar: React.FC<NavbarProps> = ({
               USD
             </span>
           </button>
+
+          {/* Language Selector Dropdown (English, French, Spanish, Haitian Creole) */}
+          <div className="relative">
+            <button
+              onClick={() => setLanguageMenuOpen(!languageMenuOpen)}
+              type="button"
+              className="px-2.5 py-1.5 text-xs font-semibold text-neutral-300 hover:text-white border border-neutral-700 hover:border-neutral-500 rounded-lg transition-colors whitespace-nowrap cursor-pointer flex items-center gap-1.5"
+              title="Select Language (English, French, Spanish, Creole)"
+            >
+              <Globe className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="uppercase font-mono">{language}</span>
+            </button>
+
+            {languageMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-42 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl py-1 z-50 text-xs font-medium">
+                {[
+                  { code: 'en', label: 'English (US/UK)' },
+                  { code: 'fr', label: 'Français' },
+                  { code: 'es', label: 'Español' },
+                  { code: 'ht', label: 'Kreyòl Ayisyen' },
+                ].map((item) => (
+                  <button
+                    key={item.code}
+                    onClick={() => {
+                      if (onLanguageChange) onLanguageChange(item.code as any);
+                      setLanguageMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 flex items-center justify-between hover:bg-neutral-800 cursor-pointer ${
+                      language === item.code ? 'text-emerald-400 font-bold bg-neutral-950' : 'text-neutral-300'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {language === item.code && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Global Theme Toggle (Day Mode vs Elite Night) */}
+          {onToggleTheme && (
+            <button
+              onClick={onToggleTheme}
+              type="button"
+              className="p-1.5 text-xs text-neutral-300 hover:text-white border border-neutral-700 hover:border-neutral-500 rounded-lg transition-colors cursor-pointer"
+              title={themeMode === 'day' ? 'Switch to Elite Night (Dark)' : 'Switch to High-Contrast Day Mode (Light)'}
+            >
+              {themeMode === 'day' ? (
+                <Moon className="w-4 h-4 text-indigo-400" />
+              ) : (
+                <Sun className="w-4 h-4 text-amber-400" />
+              )}
+            </button>
+          )}
+
+          {/* Accessibility Mode Toggle */}
+          {onToggleAccessibility && (
+            <button
+              onClick={onToggleAccessibility}
+              type="button"
+              className={`p-1.5 text-xs border rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
+                accessibilityMode
+                  ? 'bg-emerald-500 text-neutral-950 border-emerald-400 font-bold shadow-md'
+                  : 'text-neutral-300 hover:text-white border-neutral-700 hover:border-neutral-500'
+              }`}
+              title="Toggle Accessibility Contrast Mode (Large Text & Enhanced Rings)"
+            >
+              <Eye className="w-4 h-4" />
+              <span className="hidden xl:inline text-[10px]">A11y</span>
+            </button>
+          )}
 
           {/* Rider Sign Up / Profile CTA */}
           {currentRider ? (

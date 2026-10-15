@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, ShieldCheck, Radio, Smartphone, Sparkles, Layers } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Radio, Smartphone } from 'lucide-react';
 import { EliteRideLogo } from './EliteRideLogo';
 
 interface HeroSectionProps {
@@ -36,30 +36,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 showTagline={true}
                 className="transform transition-transform duration-300 group-hover:scale-105"
               />
-              
-              <div className="mt-4 flex items-center justify-center gap-2 pt-3 border-t border-neutral-800/80 w-full text-[11px] text-neutral-400">
-                {onOpenLogoDesign && (
-                  <button
-                    onClick={onOpenLogoDesign}
-                    className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors font-medium cursor-pointer"
-                  >
-                    <Layers className="w-3 h-3" />
-                    <span>Logo Design Specs</span>
-                  </button>
-                )}
-                {onReplaySplash && (
-                  <>
-                    <span className="text-neutral-600">·</span>
-                    <button
-                      onClick={onReplaySplash}
-                      className="inline-flex items-center gap-1 text-sky-400 hover:text-sky-300 transition-colors font-medium cursor-pointer"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      <span>Replay Opening Intro</span>
-                    </button>
-                  </>
-                )}
-              </div>
             </div>
           </div>
         </div>
